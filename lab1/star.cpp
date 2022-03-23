@@ -94,13 +94,17 @@ int main( int argc, char* argv[] )
 void Draw()
 {
 	SDL_FillRect(screen, 0, 0);
-	if (SDL_MUSTLOCK(screen))
-		SDL_LockSurface(screen);
-	for (size_t s = 0; s < stars.size(); ++s)
+	if (SDL_MUSTLOCK(screen)) SDL_LockSurface(screen);
+
+	for (size_t i = 0; i < stars.size(); ++i)
 	{
-		PutPixelSDL(screen, x, y, vec3(1, 1, 1));
+		float f = (float) SCREEN_HEIGHT / 2.0f;
+		int u = (float) f * (stars[i].x / stars[i].z) + (SCREEN_WIDTH / 2.0f);
+		int v = (float) f * (stars[i].y / stars[i].z) + (SCREEN_HEIGHT / 2.0f);
+		PutPixelSDL(screen, u, v, vec3(1, 1, 1));
 	}
-	if (SDL_MUSTLOCK(screen))
-		SDL_UnlockSurface(screen);
+
+	if (SDL_MUSTLOCK(screen)) SDL_UnlockSurface(screen);
+
 	SDL_UpdateRect(screen, 0, 0, 0, 0);
 }
