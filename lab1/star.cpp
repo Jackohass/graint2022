@@ -24,6 +24,8 @@ const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
 SDL_Surface* screen;
 vector<vec3> stars(1000);
+int ticks;
+float velocity = 0.0001f;
 
 // --------------------------------------------------------
 // FUNCTION DECLARATIONS
@@ -73,6 +75,26 @@ void Interpolate(vec3 a, vec3 b, vector<vec3>& result)
 	}
 }
 
+/*
+	Update the locations of the stars
+*/
+void update(){
+	//Calculate the amount of time that has passed
+	int curTick = SDL_GetTicks();
+	float dT = (float) (curTick - ticks);
+	ticks = curTick;
+
+	//Update the star locations
+	for(int i = 0; i < stars.size(); i++){
+		//Move the star according to Equation 1
+		stars[i].z -= velocity * dT;
+
+		//Wrap the star around if outside of the drawing volume
+		if(stars[i].z <= 0) stars[i].z += 1;
+		if(stars[i].z > 1) stars[i].z -= 1;
+	}
+}
+
 int main( int argc, char* argv[] )
 {
 	for (int i = 0; i < stars.size(); i++)
@@ -83,8 +105,10 @@ int main( int argc, char* argv[] )
 	}
 
 	screen = InitializeSDL( SCREEN_WIDTH, SCREEN_HEIGHT );
+	ticks = SDL_GetTicks();
 	while( NoQuitMessageSDL() )
 	{
+		update();
 		Draw();
 	}
 	SDL_SaveBMP( screen, "screenshot.bmp" );
@@ -98,10 +122,15 @@ void Draw()
 
 	for (size_t i = 0; i < stars.size(); ++i)
 	{
+		//Calculate window coordinates from system coordinates
 		float f = (float) SCREEN_HEIGHT / 2.0f;
 		int u = (float) f * (stars[i].x / stars[i].z) + (SCREEN_WIDTH / 2.0f);
 		int v = (float) f * (stars[i].y / stars[i].z) + (SCREEN_HEIGHT / 2.0f);
-		PutPixelSDL(screen, u, v, vec3(1, 1, 1));
+
+		//Calculate the colour
+		vec3 colour = 0.2f * (vec3(1, 1, 1) / (stars[i].z * stars[i].z));
+
+		PutPixelSDL(screen, u, v, colour);
 	}
 
 	if (SDL_MUSTLOCK(screen)) SDL_UnlockSurface(screen);
