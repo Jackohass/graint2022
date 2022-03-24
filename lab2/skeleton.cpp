@@ -24,66 +24,50 @@ struct Intersection
 const int SCREEN_WIDTH = 500;
 const int SCREEN_HEIGHT = 500;
 SDL_Surface* screen;
-int t;
+int tick;
+float focalLength = SCREEN_HEIGHT / 2;
+vec3 cameraPos(0, 0, -1.75);
 
 // ----------------------------------------------------------------------------
 // FUNCTIONS
 
 void Update();
-void Draw();
+void Draw(const vector<Triangle>& triangles);
 
 bool CheckTriangleIntersection(
 	const vec3& start,
 	const vec3& dir,
 	const Triangle& triangle,
-	Intersection& intersection
+	Intersection& intersection,
+	float best
 )
 {
-	//Get the axises of the triangles.
-	vec3 t1 = triangle.v1 - triangle.v0;
-	vec3 t2 = triangle.v2 - triangle.v0;
+	vec3 e1 = triangle.v1 - triangle.v0;
+	vec3 e2 = triangle.v2 - triangle.v0;
+	vec3 b = start - triangle.v0;
 
-	float d = glm::dot(dir, triangle.normal);
-	float epsilon = 0.0001f;
+	float detA = glm::determinant(mat3(-dir, e1, e2));
+	float detA1 = glm::determinant(mat3(b, e1, e2));
 
-	//Make sure that the ray isn't parallel to surface within an epsilon.
-	if (fabs(d) < epsilon) {
-		return false;
-	}
+	float t = detA1 / detA;
 
-	//Calculate intersection
-	float inter = glm::dot((triangle.v0 - start), triangle.normal);
-	float t = inter / d;
+	if(t < 0 || t >= best) return false;
 
-	//Check that the intersection isn't too close or too far away
-	if (t < 0 || t + epsilon > 1/*maxLambda?*/) {
-		return false;
-	}
+	float detA2 = glm::determinant(mat3(-dir, b, e2));
+	float u = detA2 / detA;
 
-	//Calculate point of intersection
-	vec3 p = start + t * dir;
-	
-	//### Cramer's rule ###
-	//Area of triangle
-	double area = glm::length(triangle.normal) / 2.0;
+	if(u < 0 || u > 1) return false;
 
-	//Area of beta part of the triangle. Check that it is within parameter, otherwise we end early.
-	double beta = glm::dot(glm::cross(t1, p - triangle.v0), triangle.normal) / glm::dot(triangle.normal, triangle.normal);
-	if (!(beta <= 1 && beta >= 0)) return false;
+	float detA3 = glm::determinant(mat3(-dir, e1, b));
+	float v = detA3 / detA;
 
-	//Area of gamma part of the triangle. Check that it is within parameter, otherwise we end early.
-	double gamma = glm::dot(glm::cross(p - triangle.v0, t2), triangle.normal) / glm::dot(triangle.normal, triangle.normal);
-	if (!(gamma <= 1 && gamma >= 0)) return false;
-
-	//Area of gamma part of the triangle. Check that it is within parameter, otherwise we end early.
-	double alpha = 1 - gamma - beta;
-	if (!(alpha <= 1 && alpha >= 0)) return false;
+	if(v < 0 || u + v > 1) return false;
 
 	//Put into intersection
-	intersection.distance = glm::length(p);
-	intersection.position = p;
+	intersection.distance = t;
+	intersection.position = start + t * dir;
 	//NOTE: We don't set index here, we set it when it returns.
-	intersection.triangleIndex = 0;
+	intersection.triangleIndex = -1;
 	return true;
 }
 
@@ -102,13 +86,14 @@ bool ClosestIntersection(
 	//Go through all the triangles and check if it is the closest intersection.
 	for (int i = 0; i < triangles.size(); i++)
 	{
-		if (CheckTriangleIntersection(start, dir, triangles[i], intersection))
-		{
+		if(CheckTriangleIntersection(start, dir, triangles[i],
+						intersection, smallestDistance)){
 			//We have found an intersection
-			hasIntersection = true;
 			if (intersection.distance < smallestDistance)
 			{
-				//If it is closer than the last one we checked, save it and assign its triangle index.
+				hasIntersection = true;
+				//If it is closer than the last one we checked,
+				// save it and assign its triangle index.
 				smallestDistance = intersection.distance;
 				closestIntersection = intersection;
 				closestIntersection.triangleIndex = i;
@@ -122,12 +107,17 @@ bool ClosestIntersection(
 int main( int argc, char* argv[] )
 {
 	screen = InitializeSDL( SCREEN_WIDTH, SCREEN_HEIGHT );
-	t = SDL_GetTicks();	// Set start value for timer.
+
+	// Load the scene
+	vector<Triangle> triangles;
+	LoadTestModel(triangles);
+
+	tick = SDL_GetTicks();	// Set start value for timer.
 
 	while( NoQuitMessageSDL() )
 	{
 		Update();
-		Draw();
+		Draw(triangles);
 	}
 
 	SDL_SaveBMP( screen, "screenshot.bmp" );
@@ -137,13 +127,13 @@ int main( int argc, char* argv[] )
 void Update()
 {
 	// Compute frame time:
-	int t2 = SDL_GetTicks();
-	float dt = float(t2-t);
-	t = t2;
+	int curTick = SDL_GetTicks();
+	float dt = float(curTick - tick);
+	tick = curTick;
 	cout << "Render time: " << dt << " ms." << endl;
 }
 
-void Draw()
+void Draw(const vector<Triangle>& triangles)
 {
 	if( SDL_MUSTLOCK(screen) )
 		SDL_LockSurface(screen);
@@ -152,7 +142,18 @@ void Draw()
 	{
 		for( int x=0; x<SCREEN_WIDTH; ++x )
 		{
-			vec3 color( 1, 0.5, 0.5 );
+			vec3 color(0, 0, 0);
+
+			vec3 d(x - SCREEN_WIDTH / 2,
+				y - SCREEN_HEIGHT / 2,
+				focalLength
+			);
+
+			Intersection intersection;
+			if(ClosestIntersection(cameraPos, d, triangles, intersection)){
+				color = triangles[intersection.triangleIndex].color;
+			}
+
 			PutPixelSDL( screen, x, y, color );
 		}
 	}
