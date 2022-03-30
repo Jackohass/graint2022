@@ -25,8 +25,10 @@ const int SCREEN_WIDTH = 500;
 const int SCREEN_HEIGHT = 500;
 SDL_Surface* screen;
 int tick;
-float focalLength = SCREEN_HEIGHT / 2;
+float focalLength = SCREEN_HEIGHT;
 vec3 cameraPos(0, 0, -1.75);
+mat3 R;
+float yaw = 0;
 
 // ----------------------------------------------------------------------------
 // FUNCTIONS
@@ -131,6 +133,40 @@ void Update()
 	float dt = float(curTick - tick);
 	tick = curTick;
 	cout << "Render time: " << dt << " ms." << endl;
+
+	Uint8* keystate = SDL_GetKeyState( 0 );
+	if( keystate[SDLK_UP] )
+	{
+		// Move camera forward
+		vec3 forward(R[2][0], R[2][1], R[2][2]);
+		cameraPos += 0.1f * forward;
+	}
+	if( keystate[SDLK_DOWN] )
+	{
+		// Move camera backward
+		vec3 forward(R[2][0], R[2][1], R[2][2]);
+		cameraPos -= 0.1f * forward;
+	}
+	if( keystate[SDLK_LEFT] )
+	{
+		// Move camera to the left
+		//cameraPos[0] -= 0.1;
+		yaw += 5;
+		float rad = glm::radians(yaw);
+		R = mat3(glm::cos(rad), 0, glm::sin(rad),
+			 0, 1, 0,
+			-glm::sin(rad), 0, glm::cos(rad));
+	}
+	if( keystate[SDLK_RIGHT] )
+	{
+		// Move camera to the right
+		//cameraPos[0] += 0.1;
+		yaw -= 5;
+		float rad = glm::radians(yaw);
+		R = mat3(glm::cos(rad), 0, glm::sin(rad),
+			 0, 1, 0,
+			-glm::sin(rad), 0, glm::cos(rad));
+	}
 }
 
 void Draw(const vector<Triangle>& triangles)
@@ -148,9 +184,11 @@ void Draw(const vector<Triangle>& triangles)
 				y - SCREEN_HEIGHT / 2,
 				focalLength
 			);
+			vec3 normD = glm::normalize(R * d);
 
 			Intersection intersection;
-			if(ClosestIntersection(cameraPos, d, triangles, intersection)){
+			if(ClosestIntersection(cameraPos, normD,
+							triangles, intersection)){
 				color = triangles[intersection.triangleIndex].color;
 			}
 
