@@ -40,6 +40,9 @@ vec3 indirectLight = 0.5f * vec3(1, 1, 1);
 void Update();
 void Draw(const vector<Triangle>& triangles);
 
+/*
+	Check if specified triangle intersects with the ray.
+*/
 bool CheckTriangleIntersection(
 	const vec3& start,
 	const vec3& dir,
@@ -52,21 +55,28 @@ bool CheckTriangleIntersection(
 	vec3 e2 = triangle.v2 - triangle.v0;
 	vec3 b = start - triangle.v0;
 
+	//We use Cramer's rule to solve the inverse matrix to increase performance.
 	float detA = glm::determinant(mat3(-dir, e1, e2));
 	float detA1 = glm::determinant(mat3(b, e1, e2));
 
 	float t = detA1 / detA;
+
+	//Epsilon to handle floating point inaccuracies.
 	float epsilon = 0.00001;
+
+	//Check that t isn't behind the start point within epsilon or large than our current best.
 	if (t - epsilon < 0 || t >= best) return false;
 
 	float detA2 = glm::determinant(mat3(-dir, b, e2));
 	float u = detA2 / detA;
 
+	//End early if u doesn't meet inequalities.
 	if (u < 0 || u > 1) return false;
 
 	float detA3 = glm::determinant(mat3(-dir, e1, b));
 	float v = detA3 / detA;
 
+	//End early if v doesn't meet inequalities.
 	if (v < 0 || u + v > 1) return false;
 
 	//Put into intersection
@@ -77,6 +87,9 @@ bool CheckTriangleIntersection(
 	return true;
 }
 
+/*
+	Check through all triangles with given ray if there is an intersection.
+*/
 bool ClosestIntersection(
 	const vec3& start,
 	const vec3& dir,
@@ -109,17 +122,23 @@ bool ClosestIntersection(
 	return hasIntersection;
 }
 
+/*
+	Calculate the amount of direct light on specified intersection point.
+*/
 vec3 DirectLight(const Intersection& i, const vector<Triangle>& triangles)
 {
-
 	vec3 n = triangles[i.triangleIndex].normal;
+	//Vector from intersection point to light source.
 	vec3 r = lightPos - i.position;
 	vec3 rN = glm::normalize(r);
 	Intersection inter;
+	//Check if there is a triangle blocking the light source
 	if (ClosestIntersection(i.position, r, triangles, inter))
 	{
+		//Make sure that the blocking triangle is in front of the light.
 		if(inter.distance < 1) return vec3(0, 0, 0);
 	}
+	//Returned the amount of direct light.
 	return (lightColor * glm::max(glm::dot(rN, n), 0.0f)) / (4 * glm::pi<float>() * glm::dot(r, r));
 }
 
@@ -152,6 +171,7 @@ void Update()
 	tick = curTick;
 	cout << "Render time: " << dt << " ms." << endl;
 
+	//Direction vectors
 	vec3 forward(R[2][0], R[2][1], R[2][2]);
 	vec3 right(R[0][0], R[0][1], R[0][2]);
 	vec3 down(R[1][0], R[1][1], R[1][2]);
@@ -187,6 +207,7 @@ void Update()
 			 0, 1, 0,
 			-glm::sin(rad), 0, glm::cos(rad));
 	}
+	//Move forwad, back, right, left, down and up respectively.
 	if (keystate[SDLK_w]) lightPos += 0.1f * forward;
 	if (keystate[SDLK_s]) lightPos -= 0.1f * forward;
 	if (keystate[SDLK_d]) lightPos += 0.1f * right;
@@ -204,18 +225,22 @@ void Draw(const vector<Triangle>& triangles)
 	{
 		for( int x=0; x<SCREEN_WIDTH; ++x )
 		{
+			//Original colour, black if there is no intersection.
 			vec3 color(0, 0, 0);
 
+			//Calculate ray direction
 			vec3 d(x - SCREEN_WIDTH / 2,
 				y - SCREEN_HEIGHT / 2,
 				focalLength
 			);
 			vec3 normD = glm::normalize(R * d);
 
+			//Check if there are any intersections.
 			Intersection intersection;
 			if(ClosestIntersection(cameraPos, normD,
 							triangles, intersection)){
 				vec3 colorT = triangles[intersection.triangleIndex].color;
+				//Calculate direct light and muliply it componentwise with the colour of the triangle.
 				color = colorT * (DirectLight(intersection, triangles) + indirectLight);
 			}
 
