@@ -1,5 +1,6 @@
 #include <iostream>
 #include <glm/glm.hpp>
+#include <glm/gtx/constants.hpp>
 #include <SDL.h>
 #include "SDLauxiliary.h"
 #include "TestModel.h"
@@ -21,14 +22,15 @@ struct Intersection
 // ----------------------------------------------------------------------------
 // GLOBAL VARIABLES
 
-const int SCREEN_WIDTH = 500;
-const int SCREEN_HEIGHT = 500;
+const int SCREEN_WIDTH = 100;
+const int SCREEN_HEIGHT = 100;
 SDL_Surface* screen;
 int tick;
 float focalLength = SCREEN_HEIGHT;
-vec3 cameraPos(0, 0, -1.75);
+vec3 cameraPos(0, 0, -3);
 mat3 R;
 float yaw = 0;
+vec3 lightPos(0, -0.5, -0.7);vec3 lightColor = 14.f * vec3(1, 1, 1);
 
 // ----------------------------------------------------------------------------
 // FUNCTIONS
@@ -52,18 +54,18 @@ bool CheckTriangleIntersection(
 	float detA1 = glm::determinant(mat3(b, e1, e2));
 
 	float t = detA1 / detA;
-
-	if(t < 0 || t >= best) return false;
+	float epsilon = 0.00001;
+	if (t - epsilon < 0 || t >= best) return false;
 
 	float detA2 = glm::determinant(mat3(-dir, b, e2));
 	float u = detA2 / detA;
 
-	if(u < 0 || u > 1) return false;
+	if (u < 0 || u > 1) return false;
 
 	float detA3 = glm::determinant(mat3(-dir, e1, b));
 	float v = detA3 / detA;
 
-	if(v < 0 || u + v > 1) return false;
+	if (v < 0 || u + v > 1) return false;
 
 	//Put into intersection
 	intersection.distance = t;
@@ -88,10 +90,10 @@ bool ClosestIntersection(
 	//Go through all the triangles and check if it is the closest intersection.
 	for (int i = 0; i < triangles.size(); i++)
 	{
-		if(CheckTriangleIntersection(start, dir, triangles[i],
-						intersection, smallestDistance)){
+		if (CheckTriangleIntersection(start, dir, triangles[i],
+			intersection, smallestDistance)) {
 			//We have found an intersection
-			if (intersection.distance < smallestDistance)
+			if (intersection.distance < smallestDistance )
 			{
 				hasIntersection = true;
 				//If it is closer than the last one we checked,
@@ -103,6 +105,21 @@ bool ClosestIntersection(
 		}
 	}
 	return hasIntersection;
+}
+
+vec3 DirectLight(const Intersection& i, const vector<Triangle>& triangles)
+{
+
+	vec3 n = triangles[i.triangleIndex].normal;
+	vec3 r = lightPos - i.position;
+	vec3 rN = glm::normalize(r);
+	Intersection inter;
+	if (ClosestIntersection(i.position, rN, triangles, inter))
+	{
+		//printf("Dad came home");
+		return vec3(0, 0, 0);
+	}
+	return (lightColor * glm::max(glm::dot(rN, n), 0.0f)) / (4 * glm::pi<float>()*glm::dot(r, r));
 }
 
 
@@ -134,17 +151,19 @@ void Update()
 	tick = curTick;
 	cout << "Render time: " << dt << " ms." << endl;
 
+	vec3 forward(R[2][0], R[2][1], R[2][2]);
+	vec3 right(R[0][0], R[0][1], R[0][2]);
+	vec3 down(R[1][0], R[1][1], R[1][2]);
+
 	Uint8* keystate = SDL_GetKeyState( 0 );
 	if( keystate[SDLK_UP] )
 	{
 		// Move camera forward
-		vec3 forward(R[2][0], R[2][1], R[2][2]);
 		cameraPos += 0.1f * forward;
 	}
 	if( keystate[SDLK_DOWN] )
 	{
 		// Move camera backward
-		vec3 forward(R[2][0], R[2][1], R[2][2]);
 		cameraPos -= 0.1f * forward;
 	}
 	if( keystate[SDLK_LEFT] )
@@ -167,6 +186,12 @@ void Update()
 			 0, 1, 0,
 			-glm::sin(rad), 0, glm::cos(rad));
 	}
+	if (keystate[SDLK_w]) lightPos += 0.1f * forward;
+	if (keystate[SDLK_s]) lightPos -= 0.1f * forward;
+	if (keystate[SDLK_d]) lightPos += 0.1f * right;
+	if (keystate[SDLK_a]) lightPos -= 0.1f * right;
+	if (keystate[SDLK_q]) lightPos += 0.1f * down;
+	if (keystate[SDLK_e]) lightPos -= 0.1f * down;
 }
 
 void Draw(const vector<Triangle>& triangles)
@@ -189,7 +214,8 @@ void Draw(const vector<Triangle>& triangles)
 			Intersection intersection;
 			if(ClosestIntersection(cameraPos, normD,
 							triangles, intersection)){
-				color = triangles[intersection.triangleIndex].color;
+				vec3 colorT = triangles[intersection.triangleIndex].color;
+				color = colorT * DirectLight(intersection, triangles);
 			}
 
 			PutPixelSDL( screen, x, y, color );
