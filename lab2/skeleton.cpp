@@ -22,15 +22,17 @@ struct Intersection
 // ----------------------------------------------------------------------------
 // GLOBAL VARIABLES
 
-const int SCREEN_WIDTH = 100;
-const int SCREEN_HEIGHT = 100;
+const int SCREEN_WIDTH = 500;
+const int SCREEN_HEIGHT = 500;
 SDL_Surface* screen;
 int tick;
 float focalLength = SCREEN_HEIGHT;
 vec3 cameraPos(0, 0, -3);
 mat3 R;
 float yaw = 0;
-vec3 lightPos(0, -0.5, -0.7);vec3 lightColor = 14.f * vec3(1, 1, 1);
+vec3 lightPos(0, -0.5, -0.7);
+vec3 lightColor = 14.f * vec3(1, 1, 1);
+vec3 indirectLight = 0.5f * vec3(1, 1, 1);
 
 // ----------------------------------------------------------------------------
 // FUNCTIONS
@@ -114,12 +116,11 @@ vec3 DirectLight(const Intersection& i, const vector<Triangle>& triangles)
 	vec3 r = lightPos - i.position;
 	vec3 rN = glm::normalize(r);
 	Intersection inter;
-	if (ClosestIntersection(i.position, rN, triangles, inter))
+	if (ClosestIntersection(i.position, r, triangles, inter))
 	{
-		//printf("Dad came home");
-		return vec3(0, 0, 0);
+		if(inter.distance < 1) return vec3(0, 0, 0);
 	}
-	return (lightColor * glm::max(glm::dot(rN, n), 0.0f)) / (4 * glm::pi<float>()*glm::dot(r, r));
+	return (lightColor * glm::max(glm::dot(rN, n), 0.0f)) / (4 * glm::pi<float>() * glm::dot(r, r));
 }
 
 
@@ -215,7 +216,7 @@ void Draw(const vector<Triangle>& triangles)
 			if(ClosestIntersection(cameraPos, normD,
 							triangles, intersection)){
 				vec3 colorT = triangles[intersection.triangleIndex].color;
-				color = colorT * DirectLight(intersection, triangles);
+				color = colorT * (DirectLight(intersection, triangles) + indirectLight);
 			}
 
 			PutPixelSDL( screen, x, y, color );
