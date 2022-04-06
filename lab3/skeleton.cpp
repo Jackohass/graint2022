@@ -45,6 +45,14 @@ int main( int argc, char* argv[] )
 	vector<ivec2> rightPixels;
 	ComputePolygonRows(vertexPixels, leftPixels, rightPixels);
 	for (int row = 0; row < leftPixels.size(); ++row)
+	{
+		cout << "Start: ("
+			<< leftPixels[row].x << ","
+			<< leftPixels[row].y << "). "
+			<< "End: ("
+			<< rightPixels[row].x << ","
+			<< rightPixels[row].y << "). " << endl;
+	}
 
 	while( NoQuitMessageSDL() )
 	{
@@ -159,7 +167,7 @@ void ComputePolygonRows(const vector<ivec2>& vertexPixels, vector<ivec2>& leftPi
 		if (min > vertexPixels[i].y) min = vertexPixels[i].y;
 		if (max < vertexPixels[i].y) max = vertexPixels[i].y;
 	}
-	int rows = max-min;
+	int rows = max-min+1;
 
 	leftPixels.resize(rows);
 	rightPixels.resize(rows);
@@ -168,6 +176,8 @@ void ComputePolygonRows(const vector<ivec2>& vertexPixels, vector<ivec2>& leftPi
 	{
 		leftPixels[i].x = +numeric_limits<int>::max();
 		rightPixels[i].x = -numeric_limits<int>::max();
+		leftPixels[i].y = i + min;
+		rightPixels[i].y = i + min;
 	}
 
 	for (int i = 0; i < vertexPixels.size(); i++)
