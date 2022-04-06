@@ -21,6 +21,7 @@ vec3 cameraPos(0, 0, -3.001);
 const float focalLength = SCREEN_WIDTH;
 mat3 R;
 float yaw = 0;
+vec3 currentColor(1, 1, 1);
 
 // ----------------------------------------------------------------------------
 // FUNCTIONS
@@ -30,6 +31,7 @@ void ComputePolygonRows(const vector<ivec2>& vertexPixels, vector<ivec2>& leftPi
 void Update();
 void Draw();
 void Interpolate(ivec2 a, ivec2 b, vector<ivec2>& result);
+void VertexShader(const vec3& v, ivec2& p);
 
 int main( int argc, char* argv[] )
 {
@@ -37,7 +39,7 @@ int main( int argc, char* argv[] )
 	screen = InitializeSDL( SCREEN_WIDTH, SCREEN_HEIGHT );
 	t = SDL_GetTicks();	// Set start value for timer.
 
-	vector<ivec2> vertexPixels(3);
+	/*vector<ivec2> vertexPixels(3);
 	vertexPixels[0] = ivec2(10, 5);
 	vertexPixels[1] = ivec2(5, 10);
 	vertexPixels[2] = ivec2(15, 15);
@@ -52,11 +54,11 @@ int main( int argc, char* argv[] )
 			<< "End: ("
 			<< rightPixels[row].x << ","
 			<< rightPixels[row].y << "). " << endl;
-	}
+	}*/
 
 	while( NoQuitMessageSDL() )
 	{
-		//Update();
+		Update();
 		Draw();
 	}
 
@@ -197,6 +199,36 @@ void ComputePolygonRows(const vector<ivec2>& vertexPixels, vector<ivec2>& leftPi
 	}
 }
 
+void DrawRows(const vector<ivec2>& leftPixels, const vector<ivec2>& rightPixels){
+	//printf("%d, %d\n", leftPixels.size(), rightPixels.size());
+	for(int i = 0; i < leftPixels.size(); i++){
+		int rowLength = rightPixels[i].x - leftPixels[i].x + 1;
+		printf("Row: %d with %d pixels\n", i, rowLength);
+		for(int j = 0; j < rowLength; j++){
+			printf("Pixel: %d at (%d, %d)\n", j, leftPixels[i].x + j, leftPixels[i].y);
+			//PutPixelSDL(screen, leftPixels[i].x + j, leftPixels[i].y, currentColor);
+		}
+	}
+	printf("Done!\n");
+}
+
+void DrawPolygon( const vector<vec3>& vertices ){
+	int V = vertices.size();
+
+	//Project the corners
+	vector<ivec2> vertexPixels(V);
+	for(int i = 0; i < V; ++i) VertexShader(vertices[i], vertexPixels[i]);
+
+	//Compute the rows of the polygon
+	vector<ivec2> leftPixels;
+	vector<ivec2> rightPixels;
+	ComputePolygonRows( vertexPixels, leftPixels, rightPixels );
+
+	//Draw the polygon
+	DrawRows(leftPixels, rightPixels);
+	printf("Done with polygon!\n");
+}
+
 void Interpolate(ivec2 a, ivec2 b, vector<ivec2>& result)
 {
 	int N = result.size();
@@ -247,15 +279,21 @@ void DrawPolygonEdges(const vector<vec3>& vertices)
 void Draw()
 {
 	SDL_FillRect(screen, 0, 0);
-	if (SDL_MUSTLOCK(screen))
-		SDL_LockSurface(screen);
+	if (SDL_MUSTLOCK(screen)) SDL_LockSurface(screen);
+
 	for (int i = 0; i < triangles.size(); ++i)
 	{
+		printf("Triangle: %d\n", i);
+		//Update the draw colour
+		currentColor = triangles[i].color;
+
 		vector<vec3> vertices(3);
 		vertices[0] = triangles[i].v0;
 		vertices[1] = triangles[i].v1;
 		vertices[2] = triangles[i].v2;
-		DrawPolygonEdges(vertices);
+
+		DrawPolygon(vertices);
+		printf("Done with triangle %d\n", i);
 	}
 	if (SDL_MUSTLOCK(screen))
 		SDL_UnlockSurface(screen);
