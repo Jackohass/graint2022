@@ -192,7 +192,7 @@ void ComputePolygonRows(const vector<ivec2>& vertexPixels, vector<ivec2>& leftPi
 		Interpolate(a, b, line);
 		for (int j = 0; j < line.size(); j++)
 		{
-			int y = line[j].y-min;
+			int y = line[j].y - min;
 			if (line[j].x < leftPixels[y].x) leftPixels[y].x = line[j].x;
 			if (line[j].x > rightPixels[y].x) rightPixels[y].x = line[j].x;
 		}
@@ -200,16 +200,12 @@ void ComputePolygonRows(const vector<ivec2>& vertexPixels, vector<ivec2>& leftPi
 }
 
 void DrawRows(const vector<ivec2>& leftPixels, const vector<ivec2>& rightPixels){
-	//printf("%d, %d\n", leftPixels.size(), rightPixels.size());
 	for(int i = 0; i < leftPixels.size(); i++){
 		int rowLength = rightPixels[i].x - leftPixels[i].x + 1;
-		printf("Row: %d with %d pixels\n", i, rowLength);
 		for(int j = 0; j < rowLength; j++){
-			printf("Pixel: %d at (%d, %d)\n", j, leftPixels[i].x + j, leftPixels[i].y);
-			//PutPixelSDL(screen, leftPixels[i].x + j, leftPixels[i].y, currentColor);
+			PutPixelSDL(screen, leftPixels[i].x + j, leftPixels[i].y, currentColor);
 		}
 	}
-	printf("Done!\n");
 }
 
 void DrawPolygon( const vector<vec3>& vertices ){
@@ -226,7 +222,6 @@ void DrawPolygon( const vector<vec3>& vertices ){
 
 	//Draw the polygon
 	DrawRows(leftPixels, rightPixels);
-	printf("Done with polygon!\n");
 }
 
 void Interpolate(ivec2 a, ivec2 b, vector<ivec2>& result)
@@ -236,7 +231,7 @@ void Interpolate(ivec2 a, ivec2 b, vector<ivec2>& result)
 	glm::vec2 current(a);
 	for (int i = 0; i < N; ++i)
 	{
-		result[i] = current;
+		result[i] = glm::round(current);
 		current += step;
 	}
 }
@@ -283,7 +278,7 @@ void Draw()
 
 	for (int i = 0; i < triangles.size(); ++i)
 	{
-		printf("Triangle: %d\n", i);
+		//printf("Triangle: %d\n", i);
 		//Update the draw colour
 		currentColor = triangles[i].color;
 
@@ -293,7 +288,6 @@ void Draw()
 		vertices[2] = triangles[i].v2;
 
 		DrawPolygon(vertices);
-		printf("Done with triangle %d\n", i);
 	}
 	if (SDL_MUSTLOCK(screen))
 		SDL_UnlockSurface(screen);
