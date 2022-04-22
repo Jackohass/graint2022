@@ -9,13 +9,14 @@ struct Pixel{
 	int x;
 	int y;
 	float zinv;
-	glm::vec3 illumination;
+	glm::vec3 pos3d; //Pixel Illumination
+	//glm::vec3 illumination; //Vertex Illumination
 };
 
 struct Vertex{
 	glm::vec3 position;
-	glm::vec3 normal;
-	glm::vec3 reflectance;
+	//glm::vec3 normal; //Vertex Illumination
+	//glm::vec3 reflectance; //Vertex Illumination
 };
 
 using namespace std;
@@ -36,6 +37,8 @@ const float focalLength = SCREEN_WIDTH;
 mat3 R;
 float yaw = 0;
 vec3 currentColor(1, 1, 1);
+vec3 currentNormal; //Per Pixel Illumination
+vec3 currentReflectance; //Per Pixel Illunination
 float depthBuffer[SCREEN_HEIGHT][SCREEN_WIDTH];
 vec3 lightPos(0, -0.5, -0.7);
 vec3 lightPower = 14.1f * vec3(1, 1, 1);
@@ -131,35 +134,17 @@ void Update()
 			-glm::sin(rad), 0, glm::cos(rad));
 	}
 	//Move forwad, back, right, left, down and up respectively.
-	/*if (keystate[SDLK_w]) lightPos += 0.1f * forward;
+	if (keystate[SDLK_w]) lightPos += 0.1f * forward;
 	if (keystate[SDLK_s]) lightPos -= 0.1f * forward;
 	if (keystate[SDLK_d]) lightPos += 0.1f * right;
 	if (keystate[SDLK_a]) lightPos -= 0.1f * right;
 	if (keystate[SDLK_q]) lightPos += 0.1f * down;
-	if (keystate[SDLK_e]) lightPos -= 0.1f * down;*/
+	if (keystate[SDLK_e]) lightPos -= 0.1f * down;
 
 	if( keystate[SDLK_RSHIFT] )
 		;
 
 	if( keystate[SDLK_RCTRL] )
-		;
-
-	if( keystate[SDLK_w] )
-		;
-
-	if( keystate[SDLK_s] )
-		;
-
-	if( keystate[SDLK_d] )
-		;
-
-	if( keystate[SDLK_a] )
-		;
-
-	if( keystate[SDLK_e] )
-		;
-
-	if( keystate[SDLK_q] )
 		;
 }
 
@@ -271,13 +256,20 @@ void Interpolate(Pixel a, Pixel b, vector<Pixel>& result){
 	glm::vec3 aVec(a.x, a.y, a.zinv);
 	glm::vec3 bVec(b.x, b.y, b.zinv);
 
-	glm::vec3 aColour = a.illumination;
-	glm::vec3 bColour = b.illumination;
+	//glm::vec3 aColour = a.illumination;
+	//glm::vec3 bColour = b.illumination;
+	
+	glm::vec3 aPos3d = a.pos3d * a.zinv;
+	glm::vec3 bPos3d = b.pos3d * b.zinv;
 
 	glm::vec3 step = (bVec - aVec) / float(glm::max(N - 1, 1));
-	glm::vec3 colourStep = (bColour - aColour) / float(glm::max(N - 1, 1));
+	//glm::vec3 colourStep = (bColour - aColour) / float(glm::max(N - 1, 1));
+	//glm::vec3 pos3dStep = (bPos3d * b.zinv - aPos3d * a.zinv) / float(glm::max(N - 1, 1));
+	glm::vec3 pos3dStep = (bPos3d - aPos3d) / float(glm::max(N - 1, 1));
+
 	glm::vec3 current(aVec);
-	glm::vec3 currentColour(aColour);
+	//glm::vec3 currentColour(aColour);
+	glm::vec3 currentPos3d(aPos3d);
 	for (int i = 0; i < N; ++i)
 	{
 		//Convert the result back to a pixel
@@ -285,11 +277,13 @@ void Interpolate(Pixel a, Pixel b, vector<Pixel>& result){
 		res.x = glm::round(current.x);
 		res.y = glm::round(current.y);
 		res.zinv = current.z;
-		res.illumination = currentColour;
+		//res.illumination = currentColour;
+		res.pos3d = currentPos3d / res.zinv; //Pixel illumination
 		result[i] = res;
 
 		current += step;
-		currentColour += colourStep;
+		//currentColour += colourStep;
+		currentPos3d += pos3dStep;
 	}
 }
 
@@ -303,11 +297,14 @@ void VertexShader(const Vertex& v, Pixel& p)
 	p.zinv = 1.0f / t.z; //Calculate the inverse of z for the depth buffer
 
 	//Calculate the illumination information for the vertex pixel
+	p.pos3d = v.position;
+	/*
 	vec3 r = lightPos - v.position;
 	float sphereArea = 4.0f * glm::pi<float>() * glm::dot(r, r);
 	vec3 rNorm = glm::normalize(r);
 	vec3 D = (lightPower * glm::max(glm::dot(rNorm, v.normal), 0.0f)) / sphereArea;
 	p.illumination = v.reflectance * (D + indirectLightPowerPerArea);
+	*/
 }
 
 void PixelShader(const Pixel& p){
@@ -318,7 +315,14 @@ void PixelShader(const Pixel& p){
 
 	if(depthBuffer[y][x] < p.zinv){
 		depthBuffer[y][x] = p.zinv;
-		PutPixelSDL(screen, x, y, p.illumination);
+
+		vec3 r = lightPos - p.pos3d;
+		float sphereArea = 4.0f * glm::pi<float>() * glm::dot(r, r);
+		vec3 rNorm = glm::normalize(r);
+		vec3 D = (lightPower * glm::max(glm::dot(rNorm, currentNormal), 0.0f)) / sphereArea;
+		vec3 illumination = currentReflectance * (D + indirectLightPowerPerArea);
+
+		PutPixelSDL(screen, x, y, illumination);
 	}
 }
 
@@ -362,22 +366,23 @@ void Draw(){
 
 	for (int i = 0; i < triangles.size(); ++i)
 	{
-		//printf("Triangle: %d\n", i);
 		//Update the draw colour
-		currentColor = triangles[i].color;
+		//currentColor = triangles[i].color;
+		currentNormal = triangles[i].normal;
+		currentReflectance = triangles[i].color;
 
 		vector<Vertex> vertices(3);
 		vertices[0].position = triangles[i].v0;
-		vertices[0].normal = triangles[i].normal;
-		vertices[0].reflectance = triangles[i].color;
+		//vertices[0].normal = triangles[i].normal;
+		//vertices[0].reflectance = triangles[i].color;
 
 		vertices[1].position = triangles[i].v1;
-		vertices[1].normal = triangles[i].normal;
-		vertices[1].reflectance = triangles[i].color;
+		//vertices[1].normal = triangles[i].normal;
+		//vertices[1].reflectance = triangles[i].color;
 
 		vertices[2].position = triangles[i].v2;
-		vertices[2].normal = triangles[i].normal;
-		vertices[2].reflectance = triangles[i].color;
+		//vertices[2].normal = triangles[i].normal;
+		//vertices[2].reflectance = triangles[i].color;
 
 		DrawPolygon(vertices);
 	}
