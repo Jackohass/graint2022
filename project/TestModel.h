@@ -10,22 +10,23 @@
 class Triangle
 {
 public:
-	glm::vec3 v0;
-	glm::vec3 v1;
-	glm::vec3 v2;
+	std::vector<glm::vec3> v;
 	glm::vec3 normal;
 	glm::vec3 color;
 
 	Triangle( glm::vec3 v0, glm::vec3 v1, glm::vec3 v2, glm::vec3 color )
-		: v0(v0), v1(v1), v2(v2), color(color)
+		: color(color)
 	{
+		v.push_back(v0);
+		v.push_back(v1);
+		v.push_back(v2);
 		ComputeNormal();
 	}
 
 	void ComputeNormal()
 	{
-		glm::vec3 e1 = v1-v0;
-		glm::vec3 e2 = v2-v0;
+		glm::vec3 e1 = v[1]-v[0];
+		glm::vec3 e2 = v[2]-v[0];
 		normal = glm::normalize( glm::cross( e2, e1 ) );
 	}
 };
@@ -157,21 +158,21 @@ void LoadTestModel( std::vector<Triangle>& triangles )
 
 	for( size_t i=0; i<triangles.size(); ++i )
 	{
-		triangles[i].v0 *= 2/L;
-		triangles[i].v1 *= 2/L;
-		triangles[i].v2 *= 2/L;
+		triangles[i].v[0] *= 2/L;
+		triangles[i].v[1] *= 2/L;
+		triangles[i].v[2] *= 2/L;
 
-		triangles[i].v0 -= vec3(1,1,1);
-		triangles[i].v1 -= vec3(1,1,1);
-		triangles[i].v2 -= vec3(1,1,1);
+		triangles[i].v[0] -= vec3(1,1,1);
+		triangles[i].v[1] -= vec3(1,1,1);
+		triangles[i].v[2] -= vec3(1,1,1);
 
-		triangles[i].v0.x *= -1;
-		triangles[i].v1.x *= -1;
-		triangles[i].v2.x *= -1;
+		triangles[i].v[0].x *= -1;
+		triangles[i].v[1].x *= -1;
+		triangles[i].v[2].x *= -1;
 
-		triangles[i].v0.y *= -1;
-		triangles[i].v1.y *= -1;
-		triangles[i].v2.y *= -1;
+		triangles[i].v[0].y *= -1;
+		triangles[i].v[1].y *= -1;
+		triangles[i].v[2].y *= -1;
 
 		triangles[i].ComputeNormal();
 	}

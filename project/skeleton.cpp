@@ -6,6 +6,7 @@
 #include <SDL.h>
 #include "SDLauxiliary.h"
 #include <glm/gtx/constants.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include "TestModel.h"
 #include "glad.h"
 
@@ -25,6 +26,7 @@ struct Vertex{
 
 using namespace std;
 using glm::vec3;
+using glm::vec4;
 using glm::ivec2;
 using glm::mat3;
 using glm::mat4;
@@ -37,9 +39,13 @@ const int SCREEN_HEIGHT = 1000;
 SDL_Surface* screen;
 int t;
 vector<Triangle> triangles;
-vec3 cameraPos(0, 0, -3.001);
+vec4 cameraPos(0, 0, -3.001, 1);
+mat4 cameraMatrix(1);
+mat4 projectionMatrix = glm::perspective(53.0f,
+			(float) SCREEN_WIDTH / (float) SCREEN_HEIGHT,
+			0.1f, 100.0f);
 const float focalLength = SCREEN_WIDTH;
-mat3 R;
+mat4 R(1);
 float yaw = 0;
 vec3 currentColor(1, 1, 1);
 vec3 currentNormal; //Per Pixel Illumination
@@ -48,7 +54,8 @@ float depthBuffer[SCREEN_HEIGHT][SCREEN_WIDTH];
 vec3 lightPos(0, -0.5, -0.7);
 vec3 lightPower = 14.1f * vec3(1, 1, 1);
 vec3 indirectLightPowerPerArea = 0.5f * vec3(1, 1, 1);
-unsigned int program;
+unsigned int shader;
+unsigned int VAO;
 
 // ----------------------------------------------------------------------------
 // FUNCTIONS
@@ -64,14 +71,14 @@ void PixelShader(const Pixel& p);
 
 void updateShaders(mat4 model, vec3 objectColor)
 {
-	glUniformMatrix4fv(glGetUniformLocation(program, "model"), 1, GL_FALSE, &model[0][0]);
-	//glUniformMatrix4fv(glGetUniformLocation(program, "camera"), 1, GL_FALSE, &??[0][0]);
-	//glUniformMatrix4fv(glGetUniformLocation(program, "projection"), 1, GL_FALSE, &??[0][0]);
+	glUniformMatrix4fv(glGetUniformLocation(shader, "model"), 1, GL_FALSE, &model[0][0]);
+	glUniformMatrix4fv(glGetUniformLocation(shader, "camera"), 1, GL_FALSE, &cameraMatrix[0][0]);
+	glUniformMatrix4fv(glGetUniformLocation(shader, "projection"), 1, GL_FALSE, &projectionMatrix[0][0]);
 
-	glUniform3fv(glGetUniformLocation(program, "objectColor"), 1, &objectColor[0]);
-	glUniform3fv(glGetUniformLocation(program, "lightPos"), 1, &lightPos[0]);
-	glUniform3fv(glGetUniformLocation(program, "lightPower"), 1, &lightPower[0]);
-	glUniform3fv(glGetUniformLocation(program, "indirectLightPowerPerArea"), 1, &indirectLightPowerPerArea[0]);
+	glUniform3fv(glGetUniformLocation(shader, "objectColor"), 1, &objectColor[0]);
+	glUniform3fv(glGetUniformLocation(shader, "lightPos"), 1, &lightPos[0]);
+	glUniform3fv(glGetUniformLocation(shader, "lightPower"), 1, &lightPower[0]);
+	glUniform3fv(glGetUniformLocation(shader, "indirectLightPowerPerArea"), 1, &indirectLightPowerPerArea[0]);
 }
 
 void setupShaders()
@@ -93,12 +100,12 @@ void setupShaders()
 	glShaderSource(pixelShader, 1, &codePixel, NULL);
 	glCompileShader(pixelShader);
 
-	program = glCreateProgram();
-	glAttachShader(program, vertexShader);
-	glAttachShader(program, pixelShader);
+	shader = glCreateProgram();
+	glAttachShader(shader, vertexShader);
+	glAttachShader(shader, pixelShader);
 
-	glLinkProgram(program);
-	glUseProgram(program);
+	glLinkProgram(shader);
+	glUseProgram(shader);
 	glDeleteShader(vertexShader);
 	glDeleteShader(pixelShader);
 }
@@ -118,16 +125,25 @@ int main(int argc, char* argv[])
 
 	setupShaders();
 
-	const int numVerts = 3*3;
+	//Prepare the triangle buffer
+	const int numVerts = triangles.size() * 3 * 3 * 2;
 	float vertices[numVerts];
-	for (int i = 0; i < 9; i+=3)
-	{
-		vertices[0 + i] = triangles[0].v0[i/3];
-		vertices[1 + i] = triangles[0].v1[i/3];
-		vertices[2 + i] = triangles[0].v2[i/3];
+	for(int i = 0; i < triangles.size(); i++){
+		int curTriOffset = i * 6 * 3;
+
+		for(int j = 0; j < 3; j++){
+			int curVertOffset = curTriOffset + j * 6;
+
+			for(int k = 0; k < 3; k++){
+				vertices[curVertOffset + k] = triangles[i].v[j][k];
+			}
+			for(int k = 0; k < 3; k++){
+				vertices[curVertOffset + 3 + k] = triangles[i].normal[k];
+			}
+		}
 	}
 
-	unsigned int VBO, VAO;
+	unsigned int VBO;
 	glGenVertexArrays(1, &VAO);
 	glGenBuffers(1, &VBO);
 
@@ -173,21 +189,12 @@ int main(int argc, char* argv[])
 	return 0;
 }
 
-void Update()
-{
-	//updateShaders(? , ? );
-
-	// Compute frame time:
-	int t2 = SDL_GetTicks();
-	float dt = float(t2-t);
-	t = t2;
-	cout << "Render time: " << dt << " ms." << endl;
-
+void handleInput(){
 	Uint8* keystate = SDL_GetKeyState(0);
 
-	vec3 forward(R[2][0], R[2][1], R[2][2]);
-	vec3 right(R[0][0], R[0][1], R[0][2]);
-	vec3 down(R[1][0], R[1][1], R[1][2]);
+	vec4 forward(R[2][0], R[2][1], R[2][2], 0);
+	vec4 right(R[0][0], R[0][1], R[0][2], 0);
+	vec4 down(R[1][0], R[1][1], R[1][2], 0);
 
 	if (keystate[SDLK_UP])
 	{
@@ -205,9 +212,10 @@ void Update()
 		//cameraPos[0] -= 0.1;
 		yaw += 5;
 		float rad = glm::radians(yaw);
-		R = mat3(glm::cos(rad), 0, glm::sin(rad),
-			0, 1, 0,
-			-glm::sin(rad), 0, glm::cos(rad));
+		R = mat4(glm::cos(rad), 0, glm::sin(rad), 0,
+			0, 1, 0, 0,
+			-glm::sin(rad), 0, glm::cos(rad), 0,
+			0, 0, 0, 1);
 	}
 	if (keystate[SDLK_RIGHT])
 	{
@@ -215,25 +223,47 @@ void Update()
 		//cameraPos[0] += 0.1;
 		yaw -= 5;
 		float rad = glm::radians(yaw);
-		R = mat3(glm::cos(rad), 0, glm::sin(rad),
-			0, 1, 0,
-			-glm::sin(rad), 0, glm::cos(rad));
+		R = mat4(glm::cos(rad), 0, glm::sin(rad), 0,
+			0, 1, 0, 0, 
+			-glm::sin(rad), 0, glm::cos(rad), 0,
+			0, 0, 0, 1);
 	}
 	//Move forwad, back, right, left, down and up respectively.
-	if (keystate[SDLK_w]) lightPos += 0.1f * forward;
-	if (keystate[SDLK_s]) lightPos -= 0.1f * forward;
-	if (keystate[SDLK_d]) lightPos += 0.1f * right;
-	if (keystate[SDLK_a]) lightPos -= 0.1f * right;
-	if (keystate[SDLK_q]) lightPos += 0.1f * down;
-	if (keystate[SDLK_e]) lightPos -= 0.1f * down;
+	vec3 f(forward);
+	vec3 r(right);
+	vec3 d(down);
+
+	if (keystate[SDLK_w]) lightPos += 0.1f * f;
+	if (keystate[SDLK_s]) lightPos -= 0.1f * f;
+	if (keystate[SDLK_d]) lightPos += 0.1f * r;
+	if (keystate[SDLK_a]) lightPos -= 0.1f * r;
+	if (keystate[SDLK_q]) lightPos += 0.1f * d;
+	if (keystate[SDLK_e]) lightPos -= 0.1f * d;
 
 	if( keystate[SDLK_RSHIFT] )
 		;
 
 	if( keystate[SDLK_RCTRL] )
 		;
+
+	mat4 trans(vec4(1, 0, 0, 0), vec4(0, 1, 0, 0), vec4(0, 0, 1, 0), cameraPos);
+	cameraMatrix = trans * R;
 }
 
+void Update()
+{
+	//updateShaders(? , ? );
+
+	// Compute frame time:
+	int t2 = SDL_GetTicks();
+	float dt = float(t2-t);
+	t = t2;
+	cout << "Render time: " << dt << " ms." << endl;
+
+	handleInput();
+}
+
+/*
 void ComputePolygonRows(const vector<Pixel>& vertexPixels, vector<Pixel>& leftPixels,
 	vector<Pixel>& rightPixels)
 {
@@ -384,6 +414,7 @@ void VertexShader(const Vertex& v, Pixel& p)
 
 	//Calculate the illumination information for the vertex pixel
 	p.pos3d = v.position;
+*/
 	/*
 	vec3 r = lightPos - v.position;
 	float sphereArea = 4.0f * glm::pi<float>() * glm::dot(r, r);
@@ -391,8 +422,11 @@ void VertexShader(const Vertex& v, Pixel& p)
 	vec3 D = (lightPower * glm::max(glm::dot(rNorm, v.normal), 0.0f)) / sphereArea;
 	p.illumination = v.reflectance * (D + indirectLightPowerPerArea);
 	*/
+/*
 }
+*/
 
+/*
 void PixelShader(const Pixel& p){
 	int x = p.x;
 	int y = p.y;
@@ -442,9 +476,10 @@ void DrawPolygonEdges(const vector<Vertex>& vertices)
 		DrawLineSDL(screen, first, second, color);
 	}
 }
+*/
 
 void Draw(){
-	SDL_FillRect(screen, 0, 0);
+	/*SDL_FillRect(screen, 0, 0);
 	for(int y = 0; y < SCREEN_HEIGHT; y++)
 		for(int x = 0; x < SCREEN_WIDTH; x++) depthBuffer[y][x] = 0;
 
@@ -458,15 +493,15 @@ void Draw(){
 		currentReflectance = triangles[i].color;
 
 		vector<Vertex> vertices(3);
-		vertices[0].position = triangles[i].v0;
+		vertices[0].position = triangles[i].v[0];
 		//vertices[0].normal = triangles[i].normal;
 		//vertices[0].reflectance = triangles[i].color;
 
-		vertices[1].position = triangles[i].v1;
+		vertices[1].position = triangles[i].v[1];
 		//vertices[1].normal = triangles[i].normal;
 		//vertices[1].reflectance = triangles[i].color;
 
-		vertices[2].position = triangles[i].v2;
+		vertices[2].position = triangles[i].v[2];
 		//vertices[2].normal = triangles[i].normal;
 		//vertices[2].reflectance = triangles[i].color;
 
@@ -474,5 +509,18 @@ void Draw(){
 	}
 	if (SDL_MUSTLOCK(screen))
 		SDL_UnlockSurface(screen);
-	SDL_UpdateRect(screen, 0, 0, 0, 0);
+	SDL_UpdateRect(screen, 0, 0, 0, 0);*/
+
+	glClearColor(0.0f, 0.0f, 0.0f, 1);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	//Update our shaders based on the camera positions and stuff
+	glUseProgram(shader); //TODO: Do once
+	updateShaders(mat4(1), vec3(1, 1, 1)); //TODO: By copy or by reference?
+
+	//Render
+	glBindVertexArray(VAO);
+	glDrawArrays(GL_TRIANGLES, 0, triangles.size() * 3);
+
+	SDL_GL_SwapBuffers();
 }
