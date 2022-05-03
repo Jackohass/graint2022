@@ -31,11 +31,16 @@ public:
 	}
 };
 
+struct Object {
+	std::vector<Triangle> triangles;
+	glm::vec3 colour;
+};
+
 // Loads the Cornell Box. It is scaled to fill the volume:
 // -1 <= x <= +1
 // -1 <= y <= +1
 // -1 <= z <= +1
-void LoadTestModel( std::vector<Triangle>& triangles )
+void LoadTestModel( std::vector<Object>& objects )
 {
 	using glm::vec3;
 
@@ -48,8 +53,8 @@ void LoadTestModel( std::vector<Triangle>& triangles )
 	vec3 purple( 0.75f, 0.15f, 0.75f );
 	vec3 white(  0.75f, 0.75f, 0.75f );
 
-	triangles.clear();
-	triangles.reserve( 5*2*3 );
+	objects.clear();
+	objects.resize( 7 );
 
 	// ---------------------------------------------------------------------------
 	// Room
@@ -67,24 +72,29 @@ void LoadTestModel( std::vector<Triangle>& triangles )
 	vec3 H(0,L,L);
 
 	// Floor:
-	triangles.push_back( Triangle( C, B, A, green ) );
-	triangles.push_back( Triangle( C, D, B, green ) );
+	objects[0].triangles.push_back( Triangle( C, B, A, green ) );
+	objects[0].triangles.push_back( Triangle( C, D, B, green ) );
+	objects[0].colour = green;
 
 	// Left wall
-	triangles.push_back( Triangle( A, E, C, purple ) );
-	triangles.push_back( Triangle( C, E, G, purple ) );
+	objects[1].triangles.push_back( Triangle( A, E, C, purple ) );
+	objects[1].triangles.push_back( Triangle( C, E, G, purple ) );
+	objects[1].colour = purple;
 
 	// Right wall
-	triangles.push_back( Triangle( F, B, D, yellow ) );
-	triangles.push_back( Triangle( H, F, D, yellow ) );
+	objects[2].triangles.push_back( Triangle( F, B, D, yellow ) );
+	objects[2].triangles.push_back( Triangle( H, F, D, yellow ) );
+	objects[2].colour = yellow;
 
 	// Ceiling
-	triangles.push_back( Triangle( E, F, G, cyan ) );
-	triangles.push_back( Triangle( F, H, G, cyan ) );
+	objects[3].triangles.push_back( Triangle( E, F, G, cyan ) );
+	objects[3].triangles.push_back( Triangle( F, H, G, cyan ) );
+	objects[3].colour = cyan;
 
 	// Back wall
-	triangles.push_back( Triangle( G, D, C, white ) );
-	triangles.push_back( Triangle( G, H, D, white ) );
+	objects[4].triangles.push_back( Triangle( G, D, C, white ) );
+	objects[4].triangles.push_back( Triangle( G, H, D, white ) );
+	objects[4].colour = white;
 
 	// ---------------------------------------------------------------------------
 	// Short block
@@ -100,24 +110,25 @@ void LoadTestModel( std::vector<Triangle>& triangles )
 	H = vec3( 82,165,225);
 
 	// Front
-	triangles.push_back( Triangle(E,B,A,red) );
-	triangles.push_back( Triangle(E,F,B,red) );
+	objects[5].triangles.push_back( Triangle(E,B,A,red) );
+	objects[5].triangles.push_back( Triangle(E,F,B,red) );
 
 	// Front
-	triangles.push_back( Triangle(F,D,B,red) );
-	triangles.push_back( Triangle(F,H,D,red) );
+	objects[5].triangles.push_back( Triangle(F,D,B,red) );
+	objects[5].triangles.push_back( Triangle(F,H,D,red) );
 
 	// BACK
-	triangles.push_back( Triangle(H,C,D,red) );
-	triangles.push_back( Triangle(H,G,C,red) );
+	objects[5].triangles.push_back( Triangle(H,C,D,red) );
+	objects[5].triangles.push_back( Triangle(H,G,C,red) );
 
 	// LEFT
-	triangles.push_back( Triangle(G,E,C,red) );
-	triangles.push_back( Triangle(E,A,C,red) );
+	objects[5].triangles.push_back( Triangle(G,E,C,red) );
+	objects[5].triangles.push_back( Triangle(E,A,C,red) );
 
 	// TOP
-	triangles.push_back( Triangle(G,F,E,red) );
-	triangles.push_back( Triangle(G,H,F,red) );
+	objects[5].triangles.push_back( Triangle(G,F,E,red) );
+	objects[5].triangles.push_back( Triangle(G,H,F,red) );
+	objects[5].colour = red;
 
 	// ---------------------------------------------------------------------------
 	// Tall block
@@ -133,48 +144,54 @@ void LoadTestModel( std::vector<Triangle>& triangles )
 	H = vec3(314,330,456);
 
 	// Front
-	triangles.push_back( Triangle(E,B,A,blue) );
-	triangles.push_back( Triangle(E,F,B,blue) );
+	objects[6].triangles.push_back( Triangle(E,B,A,blue) );
+	objects[6].triangles.push_back( Triangle(E,F,B,blue) );
 
 	// Front
-	triangles.push_back( Triangle(F,D,B,blue) );
-	triangles.push_back( Triangle(F,H,D,blue) );
+	objects[6].triangles.push_back( Triangle(F,D,B,blue) );
+	objects[6].triangles.push_back( Triangle(F,H,D,blue) );
 
 	// BACK
-	triangles.push_back( Triangle(H,C,D,blue) );
-	triangles.push_back( Triangle(H,G,C,blue) );
+	objects[6].triangles.push_back( Triangle(H,C,D,blue) );
+	objects[6].triangles.push_back( Triangle(H,G,C,blue) );
 
 	// LEFT
-	triangles.push_back( Triangle(G,E,C,blue) );
-	triangles.push_back( Triangle(E,A,C,blue) );
+	objects[6].triangles.push_back( Triangle(G,E,C,blue) );
+	objects[6].triangles.push_back( Triangle(E,A,C,blue) );
 
 	// TOP
-	triangles.push_back( Triangle(G,F,E,blue) );
-	triangles.push_back( Triangle(G,H,F,blue) );
-
+	objects[6].triangles.push_back( Triangle(G,F,E,blue) );
+	objects[6].triangles.push_back( Triangle(G,H,F,blue) );
+	objects[6].colour = blue;
 
 	// ----------------------------------------------
 	// Scale to the volume [-1,1]^3
 
-	for( size_t i=0; i<triangles.size(); ++i )
+	for( size_t j=0; j< objects.size(); ++j )
 	{
-		triangles[i].v[0] *= 2/L;
-		triangles[i].v[1] *= 2/L;
-		triangles[i].v[2] *= 2/L;
+		std::vector<Triangle>& triangles = objects[j].triangles;
+		for (int i = 0; i < triangles.size(); i++)
+		{
+			
+			triangles[i].v[0] *= 2 / L;
+			triangles[i].v[1] *= 2 / L;
+			triangles[i].v[2] *= 2 / L;
 
-		triangles[i].v[0] -= vec3(1,1,1);
-		triangles[i].v[1] -= vec3(1,1,1);
-		triangles[i].v[2] -= vec3(1,1,1);
+			triangles[i].v[0] -= vec3(1, 1, 1);
+			triangles[i].v[1] -= vec3(1, 1, 1);
+			triangles[i].v[2] -= vec3(1, 1, 1);
 
-		triangles[i].v[0].x *= -1;
-		triangles[i].v[1].x *= -1;
-		triangles[i].v[2].x *= -1;
+			triangles[i].v[0].x *= -1;
+			triangles[i].v[1].x *= -1;
+			triangles[i].v[2].x *= -1;
 
-		triangles[i].v[0].y *= -1;
-		triangles[i].v[1].y *= -1;
-		triangles[i].v[2].y *= -1;
+			triangles[i].v[0].y *= -1;
+			triangles[i].v[1].y *= -1;
+			triangles[i].v[2].y *= -1;
 
-		triangles[i].ComputeNormal();
+			triangles[i].ComputeNormal();
+		}
+		
 	}
 }
 
