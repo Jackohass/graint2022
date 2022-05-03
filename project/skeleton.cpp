@@ -7,6 +7,7 @@
 #include "SDLauxiliary.h"
 #include <glm/gtx/constants.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/rotate_vector.hpp>
 #include "TestModel.h"
 #include "glad.h"
 
@@ -51,7 +52,7 @@ vec3 currentColor(1, 1, 1);
 vec3 currentNormal; //Per Pixel Illumination
 vec3 currentReflectance; //Per Pixel Illunination
 float depthBuffer[SCREEN_HEIGHT][SCREEN_WIDTH];
-vec3 lightPos(0, 0.5, 0.7);
+vec3 lightPos = glm::rotateX(vec3(0, -0.5, -0.7), 180.0f);
 vec3 lightPower = 14.1f * vec3(1, 1, 1);
 vec3 indirectLightPowerPerArea = 0.5f * vec3(1, 1, 1);
 unsigned int shader;
@@ -189,6 +190,8 @@ int main(int argc, char* argv[])
 					vertices[curVertOffset + 3 + k] = triangles[i].normal[k];
 				}
 			}
+
+			cout << triangles[i].normal[0] << " " << triangles[i].normal[1] << " " << triangles[i].normal[2] << endl;
 		}
 		curObjOffset += triangles.size();
 	}
@@ -298,7 +301,7 @@ void handleInput(){
 		;
 
 	mat4 trans(vec4(1, 0, 0, 0), vec4(0, 1, 0, 0), vec4(0, 0, 1, 0), cameraPos);
-	cameraMatrix = trans * R * glm::rotate(mat4(1), 180.0f, vec3(1, 0, 0));
+	cameraMatrix = trans * R /* * glm::rotate(mat4(1), 180.0f, vec3(1, 0, 0))*/;
 }
 
 void Update()
@@ -574,7 +577,7 @@ void Draw(){
 	for (int i = 0; i < objects.size(); i++)
 	{
 		int numtri = objects[i].triangles.size() * 3;
-		updateShaders(mat4(1), objects[i].colour); //TODO: By copy or by reference?
+		updateShaders(mat4(1) * glm::rotate(mat4(1), 180.0f, vec3(1, 0, 0)), objects[i].colour); //TODO: By copy or by reference?
 		glDrawArrays(GL_TRIANGLES, currObjOffset, numtri);
 		currObjOffset += numtri;
 	}
