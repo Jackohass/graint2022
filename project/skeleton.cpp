@@ -81,12 +81,28 @@ void updateShaders(mat4 model, vec3 objectColor)
 	glUniform3fv(glGetUniformLocation(shader, "indirectLightPowerPerArea"), 1, &indirectLightPowerPerArea[0]);
 }
 
+void checkShaderErrors(int checkShader) {
+	int success;
+	glGetShaderiv(checkShader, GL_COMPILE_STATUS, &success);
+	if (!success) {
+		int maxLength = 0;
+		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &maxLength);
+		std::vector<GLchar> errorLog(maxLength);
+		glGetShaderInfoLog(shader, maxLength, NULL, &errorLog[0]);
+		std::cout << "ERROR::SHADER_COMPILATION_ERROR: \n" << &errorLog[0] << "\n -- --------------------------------------------------- -- " << std::endl;
+	}
+	else {
+		std::cout << "Compilation was successful" << std::endl;
+	}
+}
+
 void setupShaders()
 {
 	string vertexFile;
 	string pixelFile;
-	ifstream vertexStream("shader/vertexShader.vs", ifstream::in);
-	ifstream pixelStream("shader/pixelShader.vs", ifstream::in);
+	ifstream vertexStream("shader/vertexShader.vert", ifstream::in);
+	ifstream pixelStream("shader/pixelShader.frag", ifstream::in);
+
 	vertexStream >> vertexFile;
 	pixelStream >> pixelFile;
 	const char* codeVertex = vertexFile.c_str();
@@ -95,10 +111,12 @@ void setupShaders()
 	unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
 	glShaderSource(vertexShader, 1, &codeVertex, NULL);
 	glCompileShader(vertexShader);
+	checkShaderErrors(vertexShader);
 
 	unsigned int pixelShader = glCreateShader(GL_FRAGMENT_SHADER);
 	glShaderSource(pixelShader, 1, &codePixel, NULL);
 	glCompileShader(pixelShader);
+	checkShaderErrors(pixelShader);
 
 	shader = glCreateProgram();
 	glAttachShader(shader, vertexShader);
@@ -126,7 +144,7 @@ int main(int argc, char* argv[])
 	setupShaders();
 
 	//Prepare the triangle buffer
-	const int numVerts = triangles.size() * 3 * 3 * 2;
+	const int numVerts = 30 /*HARDCODE BE CAREFUL, SPICY*/ * 3 * 3 * 2;
 	float vertices[numVerts];
 	for(int i = 0; i < triangles.size(); i++){
 		int curTriOffset = i * 6 * 3;
@@ -258,7 +276,7 @@ void Update()
 	int t2 = SDL_GetTicks();
 	float dt = float(t2-t);
 	t = t2;
-	cout << "Render time: " << dt << " ms." << endl;
+	//cout << "Render time: " << dt << " ms." << endl;
 
 	handleInput();
 }
