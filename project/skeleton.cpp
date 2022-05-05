@@ -318,17 +318,22 @@ vec3 cohesion(Boid &current){
 
 		Lastly calculate the vector required to move to said center
 	*/
-	const float radius = 1.0f;
-	const float strength = 0.001f;
+	const float radius = 0.125f;
+	const float strength = 0.0001f;
+	const float epsilon = 1.0f / 1000000.0f;
+	const float epsInvSqr = 1.0f / glm::pow(epsilon, 2.0f);
 
 	vec3 center(0, 0, 0);
 	int numNear = 0;
 	for(Boid& b : boids){
-		if (&b == &current) continue;
+		//if (&b == &current) continue;
 
-		if(glm::distance(current.pos, b.pos) < radius){
+		float d = glm::distance(current.pos, b.pos);
+		if(d < radius){
 			//TODO: This should probably be weighted by the inv square dist
-			center += b.pos;
+			float w = (d > epsilon) ? (1.0f / glm::pow(d, 2.0f)) / epsInvSqr : 1.0f;
+
+			center += b.pos * w;
 			numNear++;
 		}
 	}
@@ -391,7 +396,7 @@ vec3 confinment(Boid& current){
 }
 
 void clamp(vec3& original, vec3& increment){
-	const float speedLimit = 0.001;
+	const float speedLimit = 0.0005;
 
 	vec3 value = original + increment;
 	if(glm::length(value) > speedLimit){
@@ -422,7 +427,7 @@ void simulateBoid(float dt){
 
 		clamp(b.vel, v);
 		//b.vel += v;
-		cout << i << ": " << "(" << b.vel[0] << ", " << b.vel[1] << ", " << b.vel[2] << ")" << endl;
+		//cout << i << ": " << "(" << b.vel[0] << ", " << b.vel[1] << ", " << b.vel[2] << ")" << endl;
 		b.move(b.vel * dt);
 	}
 }
@@ -433,7 +438,7 @@ void Update()
 	int t2 = SDL_GetTicks();
 	float dt = float(t2-t);
 	t = t2;
-	//cout << "Render time: " << dt << " ms." << endl;
+	cout << "Render time: " << dt << " ms." << endl;
 
 	handleInput(dt);
 

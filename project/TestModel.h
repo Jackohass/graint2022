@@ -5,10 +5,13 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtx/vector_angle.hpp>
+#include <glm/gtc/random.hpp>
 #include <vector>
 #include <iostream>
 
 using glm::vec3;
+using glm::sphericalRand;
+using glm::linearRand;
 
 // Used to describe a triangular surface:
 class Triangle
@@ -62,7 +65,10 @@ struct Boid {
 
 	glm::mat4 getModel() {
 		//Calculate the angle the boid needs to rotate to point forward
-		glm::vec3 forward(0, 1, 0);
+		//glm::vec3 forward(0, 1, 0);
+		vec3 M(1.0f / 2.0f, glm::sqrt(2.0f / 3.0f) / 2.0f, 1.0f / (2.0f * glm::sqrt(3.0f)));
+		vec3 forward = vec3(0.5, 1, 1.0f / (2.0f * glm::sqrt(3.0f))) - M;
+		
 		vec3 ref = glm::normalize(glm::cross(forward, vel));
 		float angle = glm::orientedAngle(forward, vel, ref);
 
@@ -92,7 +98,7 @@ void LoadLevel(std::vector<Object>& objects, std::vector<Boid>& boids)
 	objects.resize(1);
 
 	boids.clear();
-	const int numBoids = 2;
+	const int numBoids = 500;
 	boids.reserve(numBoids);
 
 	// ---------------------------------------------------------------------------
@@ -133,19 +139,18 @@ void LoadLevel(std::vector<Object>& objects, std::vector<Boid>& boids)
 
 	}
 
-	boids.push_back(Boid(
-		vec3(0, 0, 0), 
-		vec3(0, 0, 0), 
-		vec3(0.001, 0, 0),
-		&objects[0])
-	);
+	for(int i = 0; i < numBoids; i++){
+		vec3 pos = sphericalRand(linearRand(0.0f, 1.0f));
+		vec3 vel = sphericalRand(0.001f);
 
-	boids.push_back(Boid(
-		vec3(0.1, 0.1, 0.1),
-		vec3(0, 0, 0),
-		vec3(0.001, 0, 0),
-		&objects[0])
-	);
+		boids.push_back(Boid(
+			pos, 
+			vec3(0, 0, 0), 
+			vel,
+			&objects[0])
+		);
+
+	}
 }
 
 #endif
