@@ -246,28 +246,31 @@ int main(int argc, char* argv[])
 	return 0;
 }
 
-void handleInput(){
+void handleInput(float dt){
 	Uint8* keystate = SDL_GetKeyState(0);
 
 	vec4 forward(R[2][0], R[2][1], R[2][2], 0);
 	vec4 right(R[0][0], R[0][1], R[0][2], 0);
 	vec4 down(R[1][0], R[1][1], R[1][2], 0);
 
+	float speed = 0.001f * dt; 
+	float rotSpeed = 0.05f * dt;
+
 	if (keystate[SDLK_UP])
 	{
 		// Move camera forward
-		cameraPos += 0.001f * vec4(0, 0, 1, 0);
+		cameraPos += speed * vec4(0, 0, 1, 0);
 	}
 	if (keystate[SDLK_DOWN])
 	{
 		// Move camera backward
-		cameraPos -= 0.001f * vec4(0, 0, 1, 0);;
+		cameraPos -= speed * vec4(0, 0, 1, 0);;
 	}
 	if (keystate[SDLK_LEFT])
 	{
 		// Move camera to the left
 		//cameraPos[0] -= 0.1;
-		yaw -= 0.05f;
+		yaw += rotSpeed;
 		float rad = glm::radians(yaw);
 		R = mat4(glm::cos(rad), 0, glm::sin(rad), 0,
 			0, 1, 0, 0,
@@ -278,7 +281,7 @@ void handleInput(){
 	{
 		// Move camera to the right
 		//cameraPos[0] += 0.1;
-		yaw += 0.05f;
+		yaw -= rotSpeed;
 		float rad = glm::radians(yaw);
 		R = mat4(glm::cos(rad), 0, glm::sin(rad), 0,
 			0, 1, 0, 0, 
@@ -290,12 +293,12 @@ void handleInput(){
 	vec3 r(right);
 	vec3 d(down);
 
-	if (keystate[SDLK_w]) lightPos -= 0.001f * f;
-	if (keystate[SDLK_s]) lightPos += 0.001f * f;
-	if (keystate[SDLK_d]) lightPos += 0.001f * r;
-	if (keystate[SDLK_a]) lightPos -= 0.001f * r;
-	if (keystate[SDLK_q]) lightPos -= 0.001f * d;
-	if (keystate[SDLK_e]) lightPos += 0.001f * d;
+	if (keystate[SDLK_w]) lightPos -= speed * f;
+	if (keystate[SDLK_s]) lightPos += speed * f;
+	if (keystate[SDLK_d]) lightPos += speed * r;
+	if (keystate[SDLK_a]) lightPos -= speed * r;
+	if (keystate[SDLK_q]) lightPos -= speed * d;
+	if (keystate[SDLK_e]) lightPos += speed * d;
 
 	if( keystate[SDLK_RSHIFT] )
 		;
@@ -307,17 +310,32 @@ void handleInput(){
 	cameraMatrix = trans * R /* * glm::rotate(mat4(1), 180.0f, vec3(1, 0, 0))*/;
 }
 
+void simulateBoid(){
+	/*
+		For each boid, calulate the vector for each of the three rules
+			Simulate a fourth bounds rule to keep the boids in line
+		Then sum these vectors (without prioritising them, which differs from the paper)
+		Add this sum to the velocity of the boid
+		Update the position by the given velocity	
+	*/
+
+}
+
 void Update()
 {
-	//updateShaders(? , ? );
-
 	// Compute frame time:
 	int t2 = SDL_GetTicks();
 	float dt = float(t2-t);
 	t = t2;
 	//cout << "Render time: " << dt << " ms." << endl;
 
-	handleInput();
+	handleInput(dt);
+
+	simulateBoid();
+
+	for(Boid &b : boids){
+		b.move(vec3(0.001f, 0.0f, 0.0f));
+	}
 }
 
 void Draw(){

@@ -4,8 +4,11 @@
 // Defines a simple test model: The Cornel Box
 
 #include <glm/glm.hpp>
+#include <glm/gtx/vector_angle.hpp>
 #include <vector>
 #include <iostream>
+
+using glm::vec3;
 
 // Used to describe a triangular surface:
 class Triangle
@@ -39,11 +42,13 @@ struct Object {
 struct Boid {
 	glm::vec3 pos;
 	glm::vec3 rot;
+	glm::vec3 vel;
 	Object* mesh;
 
-	Boid(const glm::vec3& p, const glm::vec3& r, Object* obj) {
+	Boid(const glm::vec3& p, const glm::vec3& r, const glm::vec3& v, Object* obj) {
 		pos = p;
 		rot = r;
+		vel = v;
 		mesh = obj;
 	}
 
@@ -56,8 +61,15 @@ struct Boid {
 	}
 
 	glm::mat4 getModel() {
-		glm::mat4 model = glm::mat4(1.0f)*glm::eulerAngleYXZ(rot[1], rot[0], rot[2]);
-		model *= glm::translate(model, pos);
+		glm::vec3 forward(0, 1, 0);
+		vec3 ref = glm::normalize(glm::cross(forward, vel));
+		float angle = glm::orientedAngle(forward, vel, ref);
+
+		glm::mat4 model = glm::translate(glm::mat4(1.0f), pos);
+		model *= glm::eulerAngleYXZ(rot[1], rot[0], rot[2]);
+		model = glm::rotate(model, angle, ref);
+
+		//model = glm::translate(model, pos);
 		return model;
 	}
 };
@@ -122,12 +134,14 @@ void LoadLevel(std::vector<Object>& objects, std::vector<Boid>& boids)
 	boids.push_back(Boid(
 		vec3(0, 0, 0), 
 		vec3(0, 0, 0), 
+		vec3(0.001, 0, 0),
 		&objects[0])
 	);
 
 	boids.push_back(Boid(
 		vec3(0.5, 0.5, 0.5),
 		vec3(0, 0, 0),
+		vec3(0.001, 0, 0),
 		&objects[0])
 	);
 }
