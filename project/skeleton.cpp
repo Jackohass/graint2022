@@ -310,7 +310,36 @@ void handleInput(float dt){
 	cameraMatrix = trans * R /* * glm::rotate(mat4(1), 180.0f, vec3(1, 0, 0))*/;
 }
 
-void simulateBoid(){
+vec3 cohesion(Boid &current){
+	/*
+		Find the center of mass amongst nearby boids, with nearby beind defined
+		as those boids within a sphere centered on this boid with a given radius.
+		Weight the boids effect on the center of mass by their inverse distance²
+
+		Lastly calculate the vector required to move to said center
+	*/
+	const float radius = 0.5f;
+	const float strength = 0.001f;
+
+	vec3 center(0, 0, 0);
+	int numNear = 0;
+	for(Boid& b : boids){
+		if (&b == &current) continue;
+
+		if(glm::distance(current.pos, b.pos) < radius){
+			//TODO: This should probably be weighted by the inv square dist
+			center += b.pos;
+			numNear++;
+		}
+	}
+
+	//Find the averaged center, or self if no neighbours
+	center = (numNear > 0) ? center / numNear : currrent.pos;
+
+	return (center - current.pos) * strength;
+}
+
+void simulateBoid(float dt){
 	/*
 		For each boid, calulate the vector for each of the three rules
 			Simulate a fourth bounds rule to keep the boids in line
@@ -319,6 +348,9 @@ void simulateBoid(){
 		Update the position by the given velocity	
 	*/
 
+	for(Boid& b : boids){
+		vec3 v1 = cohesion(b);
+	}
 }
 
 void Update()
@@ -334,7 +366,7 @@ void Update()
 	simulateBoid();
 
 	for(Boid &b : boids){
-		b.move(vec3(0.001f, 0.0f, 0.0f));
+		b.move(vec3(0.0001f * dt, 0.0f, 0.0f));
 	}
 }
 

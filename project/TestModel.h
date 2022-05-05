@@ -61,6 +61,7 @@ struct Boid {
 	}
 
 	glm::mat4 getModel() {
+		//Calculate the angle the boid needs to rotate to point forward
 		glm::vec3 forward(0, 1, 0);
 		vec3 ref = glm::normalize(glm::cross(forward, vel));
 		float angle = glm::orientedAngle(forward, vel, ref);
