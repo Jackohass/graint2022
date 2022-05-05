@@ -318,7 +318,7 @@ vec3 cohesion(Boid &current){
 
 		Lastly calculate the vector required to move to said center
 	*/
-	const float radius = 0.5f;
+	const float radius = 1.0f;
 	const float strength = 0.001f;
 
 	vec3 center(0, 0, 0);
@@ -334,9 +334,71 @@ vec3 cohesion(Boid &current){
 	}
 
 	//Find the averaged center, or self if no neighbours
-	center = (numNear > 0) ? center / numNear : currrent.pos;
+	center = (numNear > 0) ? center / (float) numNear : current.pos;
 
 	return (center - current.pos) * strength;
+}
+
+vec3 avoidance(Boid& current){
+	const float radius = 0.05f;
+	const float strength = 0.01f;
+
+	vec3 res(0, 0, 0);
+
+	for(Boid& b : boids){
+		if (&b == &current) continue;
+
+		if(glm::distance(current.pos, b.pos) < radius){
+			res -= b.pos - current.pos;
+		}
+	}
+
+	return res * strength;
+}
+
+vec3 conformance(Boid& current){
+	const float radius = 0.5f;
+	const float strength = 0.125f;
+
+	vec3 velocity(0, 0, 0);
+	int numNear = 0;
+	for(Boid& b : boids){
+		if (&b == &current) continue;
+
+		if(glm::distance(current.pos, b.pos) < radius){
+			//TODO: This should probably be weighted by the inv square dist
+			velocity += b.vel;
+			numNear++;
+		}
+	}
+
+	velocity = (numNear > 0) ? velocity / (float) numNear : current.vel;
+
+	return (velocity - current.vel) * strength; 
+}
+
+vec3 confinment(Boid& current){
+	const float radius = 1.0f;
+	const float strength = 0.01f;
+
+	vec3 v(0, 0, 0);
+
+	if(glm::length(current.pos) > radius){
+		v = glm::normalize(-current.pos);
+	}
+
+	return v * strength;
+}
+
+void clamp(vec3& original, vec3& increment){
+	const float speedLimit = 0.001;
+
+	vec3 value = original + increment;
+	if(glm::length(value) > speedLimit){
+		value = glm::normalize(value) * speedLimit;
+	}
+
+	original = value;
 }
 
 void simulateBoid(float dt){
@@ -348,8 +410,20 @@ void simulateBoid(float dt){
 		Update the position by the given velocity	
 	*/
 
+	const float speed = 0.1f;
+
+	int i = 0;
 	for(Boid& b : boids){
-		vec3 v1 = cohesion(b);
+		vec3 v = cohesion(b);
+		v += avoidance(b); 
+		v += conformance(b);
+		v += confinment(b);
+		v *= speed;
+
+		clamp(b.vel, v);
+		//b.vel += v;
+		cout << i << ": " << "(" << b.vel[0] << ", " << b.vel[1] << ", " << b.vel[2] << ")" << endl;
+		b.move(b.vel * dt);
 	}
 }
 
@@ -363,11 +437,14 @@ void Update()
 
 	handleInput(dt);
 
-	simulateBoid();
+	simulateBoid(dt);
 
+	/*
 	for(Boid &b : boids){
+		
 		b.move(vec3(0.0001f * dt, 0.0f, 0.0f));
 	}
+	*/
 }
 
 void Draw(){
