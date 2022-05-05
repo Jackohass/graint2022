@@ -413,6 +413,8 @@ void simulateBoid(float dt){
 		Then sum these vectors (without prioritising them, which differs from the paper)
 		Add this sum to the velocity of the boid
 		Update the position by the given velocity	
+
+		Sources: https://vergenet.net/~conrad/boids/pseudocode.html, https://dl.acm.org/doi/10.1145/37402.37406 
 	*/
 
 	const float speed = 0.1f;
