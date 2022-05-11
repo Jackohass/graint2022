@@ -318,20 +318,20 @@ vec3 cohesion(Boid &current){
 
 		Lastly calculate the vector required to move to said center
 	*/
-	const float radius = 0.125f;
-	const float strength = 0.0001f;
+	const float radius = 0.25f;
+	const float strength = 2.0f;
 	const float epsilon = 1.0f / 1000000.0f;
 	const float epsInvSqr = 1.0f / glm::pow(epsilon, 2.0f);
 
 	vec3 center(0, 0, 0);
 	int numNear = 0;
 	for(Boid& b : boids){
-		//if (&b == &current) continue;
+		if (&b == &current) continue;
 
 		float d = glm::distance(current.pos, b.pos);
 		if(d < radius){
 			//TODO: This should probably be weighted by the inv square dist
-			float w = (d > epsilon) ? (1.0f / glm::pow(d, 2.0f)) / epsInvSqr : 1.0f;
+			float w = /*(d > epsilon) ? (1.0f / glm::pow(d, 2.0f)) / epsInvSqr :*/ 1.0f;
 
 			center += b.pos * w;
 			numNear++;
@@ -339,22 +339,24 @@ vec3 cohesion(Boid &current){
 	}
 
 	//Find the averaged center, or self if no neighbours
-	center = (numNear > 0) ? center / (float) numNear : current.pos;
+	center = (numNear > 0) ? center / (float) numNear - current.pos : center;
 
-	return (center - current.pos) * strength;
+	return center * strength;
 }
 
 vec3 avoidance(Boid& current){
-	const float radius = 0.05f;
-	const float strength = 0.01f;
+	const float radius = 0.1f;
+	const float strength = 0.5f;
 
 	vec3 res(0, 0, 0);
 
 	for(Boid& b : boids){
 		if (&b == &current) continue;
 
-		if(glm::distance(current.pos, b.pos) < radius){
-			res -= b.pos - current.pos;
+		float dist = glm::distance(current.pos, b.pos);
+
+		if(dist < radius){
+			res -= (b.pos - current.pos) * ((radius - dist) /  dist);
 		}
 	}
 
@@ -362,8 +364,8 @@ vec3 avoidance(Boid& current){
 }
 
 vec3 conformance(Boid& current){
-	const float radius = 0.5f;
-	const float strength = 0.125f;
+	const float radius = 0.25f;
+	const float strength = 2.0f;
 
 	vec3 velocity(0, 0, 0);
 	int numNear = 0;
@@ -383,27 +385,44 @@ vec3 conformance(Boid& current){
 }
 
 vec3 confinment(Boid& current){
-	const float radius = 1.0f;
-	const float strength = 0.01f;
+	const float strength = 1.0f;
 
 	vec3 v(0, 0, 0);
 
-	if(glm::length(current.pos) > radius){
+	if(glm::length(current.pos) > confinmentRadius){
 		v = glm::normalize(-current.pos);
 	}
 
 	return v * strength;
 }
 
-void clamp(vec3& original, vec3& increment){
-	const float speedLimit = 0.0005;
+vec3 clamp(vec3& original, vec3& increment, const float normalizer, const float dt){
+	const float speedLimitUpper = 2.5f * normalizer;
+	const float speedLimitLower = 1.0f * normalizer;
 
-	vec3 value = original + increment;
-	if(glm::length(value) > speedLimit){
-		value = glm::normalize(value) * speedLimit;
+	vec3 newBoidVel = original + increment * normalizer * dt;
+	vec3 newVel = 0.5f * increment * dt * normalizer + newBoidVel;
+	if(glm::length(newVel) > speedLimitUpper){
+		newVel = glm::normalize(newVel) * speedLimitUpper;
+	}
+	else if (glm::length(newVel) < speedLimitLower) {
+		newVel = glm::normalize(newVel) * speedLimitLower;
 	}
 
-	original = value;
+	if (glm::length(newBoidVel) > speedLimitUpper) {
+		newBoidVel = glm::normalize(newBoidVel) * speedLimitUpper;
+	}
+	else if (glm::length(newBoidVel) < speedLimitLower) {
+		newBoidVel = glm::normalize(newBoidVel) * speedLimitLower;
+	}
+
+	original = newBoidVel;
+	return newVel;
+}
+
+vec3 drag(Boid& current) {
+	const float drag = 0.1;
+	return -current.vel * drag;
 }
 
 void simulateBoid(float dt){
@@ -417,20 +436,21 @@ void simulateBoid(float dt){
 		Sources: https://vergenet.net/~conrad/boids/pseudocode.html, https://dl.acm.org/doi/10.1145/37402.37406 
 	*/
 
-	const float speed = 0.1f;
+	const float normalizer = 1.0f/10000.f;
 
 	int i = 0;
 	for(Boid& b : boids){
-		vec3 v = cohesion(b);
-		v += avoidance(b); 
-		v += conformance(b);
-		v += confinment(b);
-		v *= speed;
+		vec3 a = cohesion(b);
+		a += avoidance(b); 
+		a += conformance(b);
+		a += confinment(b);
+		a += drag(b);
 
-		clamp(b.vel, v);
 		//b.vel += v;
 		//cout << i << ": " << "(" << b.vel[0] << ", " << b.vel[1] << ", " << b.vel[2] << ")" << endl;
-		b.move(b.vel * dt);
+		b.move(clamp(b.vel, a, normalizer, dt) * dt);
+		//v = v0 + a * dt
+		//p = 0.5 * dt * dt * a + dt * v = 0.5 * dt * dt + dt * v0 + a * dt * dt = 1.5*a*dt^2 + v0*dt
 	}
 }
 
