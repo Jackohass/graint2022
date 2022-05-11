@@ -6,6 +6,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/vector_angle.hpp>
 #include <glm/gtc/random.hpp>
+#include <glm/gtc/quaternion.hpp.>
 #include <vector>
 #include <iostream>
 
@@ -70,13 +71,12 @@ struct Boid {
 		vec3 forward = vec3(0.5, 1, 1.0f / (2.0f * glm::sqrt(3.0f))) - M;
 		
 		vec3 ref = glm::normalize(glm::cross(forward, vel));
-		float angle = glm::orientedAngle(forward, vel, ref);
+		float angle = glm::orientedAngle(glm::normalize(forward), glm::normalize(vel), ref);
 
 		glm::mat4 model = glm::translate(glm::mat4(1.0f), pos);
 		model *= glm::eulerAngleYXZ(rot[1], rot[0], rot[2]);
-		model = glm::rotate(model, angle, ref);
 
-		//model = glm::translate(model, pos);
+		model = glm::rotate(model, angle, ref);
 		return model;
 	}
 };
