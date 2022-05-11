@@ -318,9 +318,9 @@ vec3 cohesion(Boid &current){
 
 		Lastly calculate the vector required to move to said center
 	*/
-	const float radius = 0.25f;
-	const float strength = 2.0f;
-	const float epsilon = 1.0f / 1000000.0f;
+	const float radius = 0.15f;
+	const float strength = 0.1f;
+	const float epsilon = 1.0f / 10.0f;
 	const float epsInvSqr = 1.0f / glm::pow(epsilon, 2.0f);
 
 	vec3 center(0, 0, 0);
@@ -331,9 +331,9 @@ vec3 cohesion(Boid &current){
 		float d = glm::distance(current.pos, b.pos);
 		if(d < radius){
 			//TODO: This should probably be weighted by the inv square dist
-			float w = /*(d > epsilon) ? (1.0f / glm::pow(d, 2.0f)) / epsInvSqr :*/ 1.0f;
+			//float w = (d > epsilon) ? (1.0f / glm::pow(d, 2.0f)) / epsInvSqr : 1.0f;
 
-			center += b.pos * w;
+			center += b.pos /* ((radius - d) / d)*/;
 			numNear++;
 		}
 	}
@@ -346,7 +346,7 @@ vec3 cohesion(Boid &current){
 
 vec3 avoidance(Boid& current){
 	const float radius = 0.1f;
-	const float strength = 0.5f;
+	const float strength = 0.4f;
 
 	vec3 res(0, 0, 0);
 
@@ -365,7 +365,7 @@ vec3 avoidance(Boid& current){
 
 vec3 conformance(Boid& current){
 	const float radius = 0.25f;
-	const float strength = 2.0f;
+	const float strength = 0.2f;
 
 	vec3 velocity(0, 0, 0);
 	int numNear = 0;
@@ -385,7 +385,7 @@ vec3 conformance(Boid& current){
 }
 
 vec3 confinment(Boid& current){
-	const float strength = 1.0f;
+	const float strength = 0.1f;
 
 	vec3 v(0, 0, 0);
 
@@ -397,8 +397,8 @@ vec3 confinment(Boid& current){
 }
 
 vec3 clamp(vec3& original, vec3& increment, const float normalizer, const float dt){
-	const float speedLimitUpper = 2.5f * normalizer;
-	const float speedLimitLower = 1.0f * normalizer;
+	const float speedLimitUpper = 1.0f * normalizer;
+	const float speedLimitLower = 0.1f * normalizer;
 
 	vec3 newBoidVel = original + increment * normalizer * dt;
 	vec3 newVel = 0.5f * increment * dt * normalizer + newBoidVel;
@@ -436,7 +436,7 @@ void simulateBoid(float dt){
 		Sources: https://vergenet.net/~conrad/boids/pseudocode.html, https://dl.acm.org/doi/10.1145/37402.37406 
 	*/
 
-	const float normalizer = 1.0f/10000.f;
+	const float normalizer = 1.0f/1000.f;
 
 	int i = 0;
 	for(Boid& b : boids){

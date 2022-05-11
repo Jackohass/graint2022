@@ -14,7 +14,7 @@ using glm::vec3;
 using glm::sphericalRand;
 using glm::linearRand;
 
-const float confinmentRadius = 2.0f;
+const float confinmentRadius = 3.0f;
 
 // Used to describe a triangular surface:
 class Triangle
