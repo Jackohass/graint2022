@@ -69,6 +69,7 @@ const float conformanceRadius = 0.25f;
 //Spatial Partitioning
 const int dimension = confinementRadius / conformanceRadius;
 vector<Boid *> spatialCells[dimension * dimension * dimension];
+vector<vector<Boid *> *> neighbours[dimension * dimension * dimension];
 
 // ----------------------------------------------------------------------------
 // FUNCTIONS
@@ -81,9 +82,7 @@ void Interpolate(ivec2 a, ivec2 b, vector<ivec2>& result);
 void Interpolate(Pixel a, Pixel b, vector<Pixel>& result);
 void VertexShader(const Vertex& v, Pixel& p);
 void PixelShader(const Pixel& p);
-
-
-
+void calculateCellNeighbours();
 
 void updateShaders(mat4 model, vec3 objectColor)
 {
@@ -226,7 +225,9 @@ int main(int argc, char* argv[])
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
 	glEnableVertexAttribArray(1);
 
-	
+	//Initialize the spaital data structures
+	calculateCellNeighbours();
+
 	t = SDL_GetTicks();	// Set start value for timer.
 
 	/*vector<ivec2> vertexPixels(3);
@@ -280,12 +281,8 @@ int spatialCellsIndex(const vec3& pos){
 	return offPos.x + offPos.y * dimension + offPos.z * dimension * dimension;
 }
 
-// Returns a list of lists containing the neighbours of the boid
-void getNeighbours(const vec3& pos, vector<vector<Boid *> *>& neigh){
+void adjacentCells(int index, ivec3 cellPos, vector<vector<Boid *> *>& neigh){
 	const int zOffset = dimension * dimension;
-
-	int index = spatialCellsIndex(pos);
-	ivec3 cellPos = getCellPos(pos);
 
 	for(int z = -1; z <= 1; z++){
 		if(cellPos.z + z > dimension - 1) continue;
@@ -307,6 +304,25 @@ void getNeighbours(const vec3& pos, vector<vector<Boid *> *>& neigh){
 				neigh.push_back(&spatialCells[neighIndex]);
 			}
 		}
+	}
+}
+
+// Returns a list of lists containing the neighbours of the boid
+void getNeighbours(const vec3& pos, vector<vector<Boid *> *>& neigh){
+	int index = spatialCellsIndex(pos);
+	ivec3 cellPos = getCellPos(pos);
+
+	adjacentCells(index, cellPos, neigh);
+}
+
+void calculateCellNeighbours(){
+	ivec3 cellPos(0, 0, 0);
+	for(int i = 0; i < dimension * dimension * dimension; i++){
+		cellPos.x = i % dimension;
+		cellPos.y = (i / dimension) % dimension;
+		cellPos.z = i / (dimension * dimension);
+
+		adjacentCells(i, cellPos, neighbours[i]);
 	}
 }
 
@@ -526,8 +542,8 @@ void simulateBoid(float dt){
 
 	int i = 0;
 	for(Boid& b : boids){
-		vector<vector<Boid *> *> neigh;
-		getNeighbours(b.pos, neigh);
+		vector<vector<Boid *> *>& neigh = neighbours[spatialCellsIndex(b.pos)];
+		//getNeighbours(b.pos, neigh);
 
 		vec3 a = cohesion(b, neigh);
 		a += avoidance(b, neigh); 
