@@ -100,7 +100,7 @@ void LoadLevel(std::vector<Object>& objects, std::vector<Boid>& boids)
 	objects.resize(1);
 
 	boids.clear();
-	const int numBoids = 5000;
+	const int numBoids = 2000;
 	boids.reserve(numBoids);
 
 	// ---------------------------------------------------------------------------

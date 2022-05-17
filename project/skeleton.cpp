@@ -565,18 +565,16 @@ void Update()
 	int t2 = SDL_GetTicks();
 	float dt = float(t2-t);
 	t = t2;
-	cout << "Render time: " << dt << " ms." << endl;
+	//cout << "Render time: " << dt << " ms." << endl;
 
 	handleInput(dt);
 
+	int simT = SDL_GetTicks();
 	simulateBoid(dt);
+	int simT2 = SDL_GetTicks();
+	int dSimT = simT2 - simT;
 
-	/*
-	for(Boid &b : boids){
-		
-		b.move(vec3(0.0001f * dt, 0.0f, 0.0f));
-	}
-	*/
+	cout << "Prev Tot time: " << dt << " ms." << " Simulation time: " << dSimT << " ms." << endl;
 }
 
 void Draw(){
