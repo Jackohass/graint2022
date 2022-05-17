@@ -100,12 +100,11 @@ void LoadLevel(std::vector<Object>& objects, std::vector<Boid>& boids)
 	objects.resize(1);
 
 	boids.clear();
-	const int numBoids = 500;
+	const int numBoids = 1000;
 	boids.reserve(numBoids);
 
 	// ---------------------------------------------------------------------------
 	// Room
-
 	float L = 40;			// Length of Cornell Box side.
 
 	

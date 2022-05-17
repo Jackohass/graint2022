@@ -55,8 +55,8 @@ vec3 currentColor(1, 1, 1);
 vec3 currentNormal; //Per Pixel Illumination
 vec3 currentReflectance; //Per Pixel Illunination
 float depthBuffer[SCREEN_HEIGHT][SCREEN_WIDTH];
-vec3 lightPos = glm::rotateX(vec3(0, -0.5, -0.7), 180.0f);
-vec3 lightPower = 14.1f * vec3(1, 1, 1);
+vec3 lightPos = glm::rotateX(vec3(0, -4.0, -0.7), 180.0f);
+vec3 lightPower = 280.1f * vec3(1, 1, 1);
 vec3 indirectLightPowerPerArea = 0.5f * vec3(1, 1, 1);
 unsigned int shader;
 unsigned int VAO;
@@ -269,6 +269,8 @@ ivec3 getCellPos(const vec3& pos){
 		if(offPos[i] >= dimension) offPos[i] = dimension - 1;
 		else if(offPos[i] < 0) offPos[i] = 0;
 	}
+
+	return offPos;
 }
 
 // Returns the index in spatialCells for which the boid is in
@@ -372,7 +374,7 @@ void handleInput(float dt){
 	cameraMatrix = trans * R /* * glm::rotate(mat4(1), 180.0f, vec3(1, 0, 0))*/;
 }
 
-vec3 cohesion(Boid &current){
+vec3 cohesion(Boid &current, vector<vector<Boid *> *>& neigh){
 	/*
 		Find the center of mass amongst nearby boids, with nearby beind defined
 		as those boids within a sphere centered on this boid with a given radius.
@@ -387,16 +389,18 @@ vec3 cohesion(Boid &current){
 
 	vec3 center(0, 0, 0);
 	int numNear = 0;
-	for(Boid& b : boids){
-		if (&b == &current) continue;
-
-		float d = glm::distance(current.pos, b.pos);
-		if(d < radius){
-			//TODO: This should probably be weighted by the inv square dist
-			//float w = (d > epsilon) ? (1.0f / glm::pow(d, 2.0f)) / epsInvSqr : 1.0f;
-
-			center += b.pos /* ((radius - d) / d)*/;
-			numNear++;
+	for(vector<Boid *> *neighList : neigh){
+		for(Boid *b : *neighList){
+			if (b == &current) continue;
+	
+			float d = glm::distance(current.pos, b->pos);
+			if(d < radius){
+				//TODO: This should probably be weighted by the inv square dist
+				//float w = (d > epsilon) ? (1.0f / glm::pow(d, 2.0f)) / epsInvSqr : 1.0f;
+	
+				center += b->pos /* ((radius - d) / d)*/;
+				numNear++;
+			}
 		}
 	}
 
@@ -406,38 +410,42 @@ vec3 cohesion(Boid &current){
 	return center * strength;
 }
 
-vec3 avoidance(Boid& current){
+vec3 avoidance(Boid& current, vector<vector<Boid *> *>& neigh){
 	const float radius = avoidanceRadius;
 	const float strength = 0.4f;
 
 	vec3 res(0, 0, 0);
 
-	for(Boid& b : boids){
-		if (&b == &current) continue;
-
-		float dist = glm::distance(current.pos, b.pos);
-
-		if(dist < radius){
-			res -= (b.pos - current.pos) * ((radius - dist) /  dist);
+	for(vector<Boid *> *neighList : neigh){
+		for(Boid *b : *neighList){
+			if (b == &current) continue;
+	
+			float dist = glm::distance(current.pos, b->pos);
+	
+			if(dist < radius){
+				res -= (b->pos - current.pos) * ((radius - dist) /  dist);
+			}
 		}
 	}
 
 	return res * strength;
 }
 
-vec3 conformance(Boid& current){
+vec3 conformance(Boid& current, vector<vector<Boid *> *>& neigh){
 	const float radius = conformanceRadius;
 	const float strength = 0.2f;
 
 	vec3 velocity(0, 0, 0);
 	int numNear = 0;
-	for(Boid& b : boids){
-		if (&b == &current) continue;
-
-		if(glm::distance(current.pos, b.pos) < radius){
-			//TODO: This should probably be weighted by the inv square dist
-			velocity += b.vel;
-			numNear++;
+	for(vector<Boid *> *neighList : neigh){
+		for(Boid *b : *neighList){
+			if (b == &current) continue;
+	
+			if(glm::distance(current.pos, b->pos) < radius){
+				//TODO: This should probably be weighted by the inv square dist
+				velocity += b->vel;
+				numNear++;
+			}
 		}
 	}
 
@@ -496,6 +504,15 @@ vec3 drag(Boid& current) {
 }
 
 void simulateBoid(float dt){
+	//Clear the spatial partition and re-insert the Boids at the correct space
+	for(int i = 0; i < dimension * dimension * dimension; i++){
+		spatialCells[i].clear();
+	}
+	for(Boid& b : boids){
+		//printf("(%f, %f, %f): %d\n", b.pos.x, b.pos.y, b.pos.z, spatialCellsIndex(b.pos));
+		spatialCells[spatialCellsIndex(b.pos)].push_back(&b);
+	}
+
 	/*
 		For each boid, calulate the vector for each of the three rules
 			Simulate a fourth bounds rule to keep the boids in line
@@ -505,14 +522,16 @@ void simulateBoid(float dt){
 
 		Sources: https://vergenet.net/~conrad/boids/pseudocode.html, https://dl.acm.org/doi/10.1145/37402.37406 
 	*/
-
 	const float normalizer = 1.0f/1000.f;
 
 	int i = 0;
 	for(Boid& b : boids){
-		vec3 a = cohesion(b);
-		a += avoidance(b); 
-		a += conformance(b);
+		vector<vector<Boid *> *> neigh;
+		getNeighbours(b.pos, neigh);
+
+		vec3 a = cohesion(b, neigh);
+		a += avoidance(b, neigh); 
+		a += conformance(b, neigh);
 		a += confinement(b);
 		a += drag(b);
 
