@@ -393,7 +393,13 @@ vec3 confinment(Boid& current){
 		v = glm::normalize(-current.pos);
 	}
 
-	return v * strength;
+
+	/*for(int i =  0; i < 3; i++){
+		if(current.pos[i] < -confinmentRadius) v[i] = 1;
+		else if(current.pos[i] > confinmentRadius) v[i] = -1;
+	}*/
+
+	return glm::normalize(v) * strength;
 }
 
 vec3 clamp(vec3& original, vec3& increment, const float normalizer, const float dt){
