@@ -30,6 +30,7 @@ using namespace std;
 using glm::vec3;
 using glm::vec4;
 using glm::ivec2;
+using glm::ivec3;
 using glm::mat3;
 using glm::mat4;
 
@@ -59,6 +60,15 @@ vec3 lightPower = 14.1f * vec3(1, 1, 1);
 vec3 indirectLightPowerPerArea = 0.5f * vec3(1, 1, 1);
 unsigned int shader;
 unsigned int VAO;
+
+//Boid Simulation
+const float cohesionRadius = 0.15f;
+const float avoidanceRadius = 0.1f;
+const float conformanceRadius = 0.25f;
+
+//Spatial Partitioning
+const int dimension = confinementRadius / conformanceRadius;
+vector<Boid *> spatialCells[dimension * dimension * dimension];
 
 // ----------------------------------------------------------------------------
 // FUNCTIONS
@@ -246,6 +256,58 @@ int main(int argc, char* argv[])
 	return 0;
 }
 
+// Returns the index of the cell in which the boid is for each dimension
+ivec3 getCellPos(const vec3& pos){
+	//Calculate how much the coordinates should be scaled to transformed into cells
+	const float scale = dimension / (confinementRadius * 2);
+	//Calculate the per axis cell indexes
+	ivec3 offPos = (ivec3) ((pos + vec3(confinementRadius)) * scale);
+
+	//Check if any pos was the maximum of said dimension or outside, and then
+	//treat it as being in the last cell of that dimension
+	for(int i = 0; i < 3; i++){
+		if(offPos[i] >= dimension) offPos[i] = dimension - 1;
+		else if(offPos[i] < 0) offPos[i] = 0;
+	}
+}
+
+// Returns the index in spatialCells for which the boid is in
+int spatialCellsIndex(const vec3& pos){
+	ivec3 offPos = getCellPos(pos);
+
+	return offPos.x + offPos.y * dimension + offPos.z * dimension * dimension;
+}
+
+// Returns a list of lists containing the neighbours of the boid
+void getNeighbours(const vec3& pos, vector<vector<Boid *> *>& neigh){
+	const int zOffset = dimension * dimension;
+
+	int index = spatialCellsIndex(pos);
+	ivec3 cellPos = getCellPos(pos);
+
+	for(int z = -1; z <= 1; z++){
+		if(cellPos.z + z > dimension - 1) continue;
+		else if(cellPos.z + z < 0) continue;
+
+		for(int y = -1; y <= 1; y++){
+			if(cellPos.y + y > dimension - 1) continue;
+			else if(cellPos.y + y < 0) continue;
+
+			for(int x = -1; x <= 1; x++){
+				if(cellPos.x + x > dimension - 1) continue;
+				else if(cellPos.x + x < 0) continue;
+
+				//The cell is valid, get its index
+				int neighIndex = index;
+				neighIndex += z * zOffset + y * dimension + x;
+
+				//Add the list of the cell to neighbours worthy of looking at
+				neigh.push_back(&spatialCells[neighIndex]);
+			}
+		}
+	}
+}
+
 void handleInput(float dt){
 	Uint8* keystate = SDL_GetKeyState(0);
 
@@ -318,7 +380,7 @@ vec3 cohesion(Boid &current){
 
 		Lastly calculate the vector required to move to said center
 	*/
-	const float radius = 0.15f;
+	const float radius = cohesionRadius;
 	const float strength = 0.1f;
 	const float epsilon = 1.0f / 10.0f;
 	const float epsInvSqr = 1.0f / glm::pow(epsilon, 2.0f);
@@ -345,7 +407,7 @@ vec3 cohesion(Boid &current){
 }
 
 vec3 avoidance(Boid& current){
-	const float radius = 0.1f;
+	const float radius = avoidanceRadius;
 	const float strength = 0.4f;
 
 	vec3 res(0, 0, 0);
@@ -364,7 +426,7 @@ vec3 avoidance(Boid& current){
 }
 
 vec3 conformance(Boid& current){
-	const float radius = 0.25f;
+	const float radius = conformanceRadius;
 	const float strength = 0.2f;
 
 	vec3 velocity(0, 0, 0);
@@ -384,19 +446,19 @@ vec3 conformance(Boid& current){
 	return (velocity - current.vel) * strength; 
 }
 
-vec3 confinment(Boid& current){
+vec3 confinement(Boid& current){
 	const float strength = 0.1f;
 
 	vec3 v(0, 0, 0);
 
-	/*if(glm::length(current.pos) > confinmentRadius){
+	/*if(glm::length(current.pos) > confinementRadius){
 		v = glm::normalize(-current.pos);
 	}*/
 
 
 	for(int i =  0; i < 3; i++){
-		if(current.pos[i] < -confinmentRadius) v[i] = 1;
-		else if(current.pos[i] > confinmentRadius) v[i] = -1;
+		if(current.pos[i] < -confinementRadius) v[i] = 1;
+		else if(current.pos[i] > confinementRadius) v[i] = -1;
 	}
 
 	if(v != vec3(0, 0, 0)) v = glm::normalize(v);
@@ -451,7 +513,7 @@ void simulateBoid(float dt){
 		vec3 a = cohesion(b);
 		a += avoidance(b); 
 		a += conformance(b);
-		a += confinment(b);
+		a += confinement(b);
 		a += drag(b);
 
 		//b.vel += v;

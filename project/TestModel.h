@@ -14,7 +14,7 @@ using glm::vec3;
 using glm::sphericalRand;
 using glm::linearRand;
 
-const float confinmentRadius = 3.0f;
+const float confinementRadius = 3.0f;
 
 // Used to describe a triangular surface:
 class Triangle
@@ -142,7 +142,7 @@ void LoadLevel(std::vector<Object>& objects, std::vector<Boid>& boids)
 	}
 
 	for(int i = 0; i < numBoids; i++){
-		vec3 pos = sphericalRand(linearRand(0.0f, confinmentRadius));
+		vec3 pos = sphericalRand(linearRand(0.0f, confinementRadius));
 		vec3 vel = sphericalRand(0.001f);
 
 		boids.push_back(Boid(

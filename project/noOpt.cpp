@@ -384,19 +384,19 @@ vec3 conformance(Boid& current){
 	return (velocity - current.vel) * strength; 
 }
 
-vec3 confinment(Boid& current){
+vec3 confinement(Boid& current){
 	const float strength = 0.1f;
 
 	vec3 v(0, 0, 0);
 
-	/*if(glm::length(current.pos) > confinmentRadius){
+	/*if(glm::length(current.pos) > confinementRadius){
 		v = glm::normalize(-current.pos);
 	}*/
 
 
 	for(int i =  0; i < 3; i++){
-		if(current.pos[i] < -confinmentRadius) v[i] = 1;
-		else if(current.pos[i] > confinmentRadius) v[i] = -1;
+		if(current.pos[i] < -confinementRadius) v[i] = 1;
+		else if(current.pos[i] > confinementRadius) v[i] = -1;
 	}
 
 	if(v != vec3(0, 0, 0)) v = glm::normalize(v);
@@ -451,7 +451,7 @@ void simulateBoid(float dt){
 		vec3 a = cohesion(b);
 		a += avoidance(b); 
 		a += conformance(b);
-		a += confinment(b);
+		a += confinement(b);
 		a += drag(b);
 
 		//b.vel += v;
