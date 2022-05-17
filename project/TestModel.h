@@ -6,7 +6,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/vector_angle.hpp>
 #include <glm/gtc/random.hpp>
-#include <glm/gtc/quaternion.hpp.>
+#include <glm/gtc/quaternion.hpp>
 #include <vector>
 #include <iostream>
 
