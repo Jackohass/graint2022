@@ -14,7 +14,8 @@ using glm::vec3;
 using glm::sphericalRand;
 using glm::linearRand;
 
-const float confinementRadius = 3.0f;
+const float confinementRadius = 1.0f;
+const int numBoids = 10000;
 
 // Used to describe a triangular surface:
 class Triangle
@@ -100,7 +101,6 @@ void LoadLevel(std::vector<Object>& objects, std::vector<Boid>& boids)
 	objects.resize(1);
 
 	boids.clear();
-	const int numBoids = 2000;
 	boids.reserve(numBoids);
 
 	// ---------------------------------------------------------------------------

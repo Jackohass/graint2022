@@ -41,6 +41,7 @@ const int SCREEN_WIDTH = 1000;
 const int SCREEN_HEIGHT = 1000;
 SDL_Surface* screen;
 int t;
+int dSimT;
 vector<Object> objects;
 vector<Boid> boids;
 vec4 cameraPos(0, 0, -3.001, 1);
@@ -247,11 +248,25 @@ int main(int argc, char* argv[])
 			<< rightPixels[row].y << "). " << endl;
 	}*/
 
-	while( NoQuitMessageSDL() )
+	const int precision = 10;
+	int avgNum[precision];
+	int i = 0;
+	while (NoQuitMessageSDL())
 	{
 		Update();
 		Draw();
+
+		avgNum[i] = dSimT;
+		i = (i + 1) % precision;
 	}
+
+	int sum = 0;
+	for (int j = 0; j < precision; j++)
+	{
+		sum += avgNum[j];
+	}
+
+	printf("Average simulate time: %d", sum / precision);
 
 	SDL_SaveBMP( screen, "screenshot.bmp" );
 	return 0;
@@ -572,7 +587,7 @@ void Update()
 	int simT = SDL_GetTicks();
 	simulateBoid(dt);
 	int simT2 = SDL_GetTicks();
-	int dSimT = simT2 - simT;
+	dSimT = simT2 - simT;
 
 	cout << "Prev Tot time: " << dt << " ms." << " Simulation time: " << dSimT << " ms." << endl;
 }
